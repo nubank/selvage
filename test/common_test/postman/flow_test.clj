@@ -1,6 +1,6 @@
 (ns common-test.postman.flow-test
   (:require [clojure.walk :as walk]
-            [common-core.test-helpers :refer [embeds]]
+            [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
             [common-test.postman.flow :as flow :refer [flow]]
             [common-test.postman.core :refer [*world*]]))
@@ -31,19 +31,20 @@
     (fact 10 => 20)
     (str s)))
 
-(clojure.pprint/with-pprint-dispatch clojure.pprint/code-dispatch
-                                     (clojure.pprint/pprint (m `(fact 10 => 20))))
+;(clojure.pprint/with-pprint-dispatch clojure.pprint/code-dispatch
+;                                     (clojure.pprint/pprint (m `(fact 10 => 20))))
 
 (m `(flow (fact 10 => 20)))
 
 (flow (fact 10 => 20))
 
 
-(flow step1
-      step2
-      (fact *world* => (embeds {:1 1 :2 2}))
-      step3
-      step4
-      (fact *world* => (embeds {:3 3 :4 4}))
-      step5
-      step6)
+(fact "flow interleaves world-transition functions and facts"
+      (flow step1
+            step2
+            (fact *world* => (embeds {:1 1 :2 2}))
+            step3
+            step4
+            (fact *world* => (embeds {:3 3 :4 4}))
+            step5
+            step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))

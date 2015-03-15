@@ -21,13 +21,13 @@
   (if step                                                ;TODO refactor to cond
     (let [[kind exprs] step]
       (if (= :check kind)
-        `(let [writer# (new java.io.StringWriter)]
-           (do                         ;too eager binding
-             (if-not (binding [*world* ~world
-                               clojure.test/*test-out* writer#]
-                       (and ~@exprs))
-               (println "FALSE! Output:\n" (str writer#))
-               (execute-steps *world* ~rest))))
+        `(let [writer#   (new java.io.StringWriter)
+               new-world# ~world]
+           (if-not (binding [*world* new-world#
+                             clojure.test/*test-out* writer#]
+                     (and ~@exprs))
+             (println "FALSE! Output:\n" (str writer#))
+             (execute-steps new-world# ~rest)))
         `(execute-steps ~(reduce #(cons %2 (list %1)) world exprs) ~rest)
         ))
     world))
