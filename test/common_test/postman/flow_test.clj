@@ -1,7 +1,9 @@
 (ns common-test.postman.flow-test
   (:require [clojure.walk :as walk]
+            [common-core.test-helpers :refer [embeds]]
             [midje.sweet :refer :all]
-            [common-test.postman.flow :as flow :refer [flow]]))
+            [common-test.postman.flow :as flow :refer [flow]]
+            [common-test.postman.core :refer [*world*]]))
 
 
 (defn tap [x]
