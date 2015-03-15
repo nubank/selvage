@@ -23,11 +23,12 @@
       (if (= :check kind)
         `(let [writer#   (new java.io.StringWriter)
                new-world# ~world]
-           (if-not (binding [*world* new-world#
-                             clojure.test/*test-out* writer#]
+           (if (binding [*world* new-world#
+                         clojure.test/*test-out* writer#]
                      (and ~@exprs))
-             (println "FALSE! Output:\n" (str writer#))
-             (execute-steps new-world# ~rest)))
+             (execute-steps new-world# ~rest)
+             (do (println "FALSE! Output:\n" (str writer#))
+                 false)))
         `(execute-steps ~(reduce #(cons %2 (list %1)) world exprs) ~rest)
         ))
     world))
