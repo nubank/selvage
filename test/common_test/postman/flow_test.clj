@@ -29,10 +29,10 @@
 (fact "flow interleaves world-transition functions and facts"
       (flow step1
             step2
-            (fact *world* => (embeds {:1 1 :2 2}))
+            (fact *world* => (iso {:1 1 :2 2}))
             step3
             step4
-            (fact *world* => (embeds {:3 3 :4 4}))
+            (fact *world* => (iso {:1 1 :2 2 :3 3 :4 4}))
             step5
             step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
 
