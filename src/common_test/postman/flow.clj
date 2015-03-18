@@ -1,7 +1,8 @@
 (ns common-test.postman.flow
   (:require [schema.macros :as sm]
             [schema.core :as s]
-            [common-test.postman.core :refer [*world*]]))
+            [common-test.postman.core :refer [*world*]]
+            [midje.emission.api :as m-emission]))
 
 
 (def expression s/Any)
@@ -16,6 +17,11 @@
   (let [steps (forms->steps forms)]
     `(execute-steps {} ~steps)))
 
+
+(defn emit [& strings]
+  (when (m-emission/config-above? :print-nothing)
+    (apply println strings)))
+
 (defmacro execute-steps [world [step & rest]]
   ;(println "world " world " step " step)
   (if step                                                ;TODO refactor to cond
@@ -27,7 +33,7 @@
                          clojure.test/*test-out* writer#]
                      (and ~@exprs))
              (execute-steps new-world# ~rest)
-             (do (println "FALSE! Output:\n" (str writer#))
+             (do (emit "Test failed with output:\n" (str writer#))
                  false)))
         `(execute-steps ~(reduce #(cons %2 (list %1)) world exprs) ~rest)
         ))

@@ -2,8 +2,11 @@
   (:require [clojure.walk :as walk]
             [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
+            [midje.config :as midje-config]
+            [midje.emission.state :as midje-state]
             [common-test.postman.flow :as flow :refer [flow]]
-            [common-test.postman.core :refer [*world*]]))
+            [common-test.postman.core :refer [*world*]]
+            [midje.emission.api :as m-emission]))
 
 
 (defn tap [x]
@@ -16,28 +19,12 @@
 (def ma walk/macroexpand-all)
 
 
-;(flow/execute-steps {} steps)
-
-(defn step1 [world] (println "1") (assoc world :1 1))
-(defn step2 [world] (println "2") (assoc world :2 2))
-(defn step3 [world] (println "3") (assoc world :3 3))
-(defn step4 [world] (println "4") (assoc world :4 4))
-(defn step5 [world] (println "5") (assoc world :5 5))
-(defn step6 [world] (println "6") (assoc world :6 6))
-
-
-(let [s (new java.io.StringWriter)]
-  (binding [*err* s]
-    (fact 10 => 20)
-    (str s)))
-
-;(clojure.pprint/with-pprint-dispatch clojure.pprint/code-dispatch
-;                                     (clojure.pprint/pprint (m `(fact 10 => 20))))
-
-(m `(flow (fact 10 => 20)))
-
-(flow (fact 10 => 20))
-
+(defn step1 [world] (assoc world :1 1))
+(defn step2 [world] (assoc world :2 2))
+(defn step3 [world] (assoc world :3 3))
+(defn step4 [world] (assoc world :4 4))
+(defn step5 [world] (assoc world :5 5))
+(defn step6 [world] (assoc world :6 6))
 
 (fact "flow interleaves world-transition functions and facts"
       (flow step1
@@ -48,3 +35,26 @@
             (fact *world* => (embeds {:3 3 :4 4}))
             step5
             step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
+
+; This will print a test failure, but
+; will not affect the result of `lein midje`
+(m-emission/silently
+  (def fact-when-step-succeeds
+    (fact "this will succeed"
+          (flow step1 (fact "passes" 1 => 1) step2) => truthy))
+
+  (def fact-when-step-fails
+    (fact "this will fail because a check fails (failure output is normal)"
+          (flow step1 (fact "fails" 1 => 2) step2) => truthy))
+
+  (def last-called (atom 0))
+  (def stops-at-failure
+    (fact "flow doesn't execute steps post failure"
+          (flow (fn [w] (reset! last-called 1) w)
+                (fact "nope" 1 => 2)
+                (fn [w] (reset! last-called 2) w)) => truthy)))
+
+(facts "checking for success and failure"
+       fact-when-step-succeeds => truthy
+       fact-when-step-fails => falsey
+       @last-called => 1)
