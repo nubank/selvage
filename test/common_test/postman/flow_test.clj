@@ -36,6 +36,9 @@
             step5
             step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
 
+(defmacro world-fn [& body]
+  `(fn [world#] (do ~@body) world#))
+
 ; This will print a test failure, but
 ; will not affect the result of `lein midje`
 (m-emission/silently
@@ -50,9 +53,9 @@
   (def last-called (atom 0))
   (def stops-at-failure
     (fact "flow doesn't execute steps post failure"
-          (flow (fn [w] (reset! last-called 1) w)
+          (flow (world-fn (reset! last-called 1))
                 (fact "nope" 1 => 2)
-                (fn [w] (reset! last-called 2) w)) => truthy)))
+                (world-fn (reset! last-called 2))) => truthy)))
 
 (facts "checking for success and failure"
        fact-when-step-succeeds => truthy
