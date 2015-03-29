@@ -33,7 +33,9 @@
 (defn gen-test-probe [world expr rest]
   `(let [[ok-or-fail# output#] ~(gen-test-run world expr)]
      (if ok-or-fail#
-       (execute-steps ~world ~rest))))
+       (execute-steps ~world ~rest)
+       (do (emit "Test failed with output:\n" output#)
+           false))))
 
 (defn gen-transition [world expr rest]
   `(execute-steps (~expr ~world) ~rest))
