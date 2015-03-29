@@ -2,15 +2,16 @@
   (:require [schema.macros :as sm]
             [schema.core :as s]
             [common-test.postman.core :refer [*world*]]
-            [midje.emission.api :as m-emission]))
+            [midje.emission.api :as m-emission])
+  (:import (java.io StringWriter)))
 
 
 (def expression s/Any)
 (def step [(s/one (s/enum :transition :check) 'kind) (s/one [expression] 'expressions)])
 (sm/defn forms->steps :- [step] [forms :- [expression]]
          (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
-                 (classify    [partition] [(if (form-check? (first partition)) :check :transition) partition])]
-           (->> forms (partition-by form-check?) (map classify))))
+                 (classify    [form] [(if (form-check? form) :check :transition) form])]
+           (->> forms (map classify))))
 
 (declare execute-steps)
 (defmacro flow [& forms]
@@ -23,18 +24,19 @@
     (apply println strings)))
 
 (defmacro execute-steps [world [step & rest]]
-  ;(println "world " world " step " step)
   (if step                                                ;TODO refactor to cond
-    (let [[kind exprs] step]
-      (if (= :check kind)
-        `(let [writer#   (new java.io.StringWriter)
+    (let [[kind expr] step]
+      (condp = kind
+        :check
+        `(let [writer#   (new StringWriter)
                new-world# ~world]
            (if (binding [*world* new-world#
                          clojure.test/*test-out* writer#]
-                     (and ~@exprs))
+                 ~expr)
              (execute-steps new-world# ~rest)
              (do (emit "Test failed with output:\n" (str writer#))
                  false)))
-        `(execute-steps ~(reduce #(cons %2 (list %1)) world exprs) ~rest)
+        :transition
+        `(execute-steps (~expr ~world) ~rest)
         ))
     world))
