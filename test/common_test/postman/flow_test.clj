@@ -1,4 +1,6 @@
 (ns common-test.postman.flow-test
+  (:import [java.util ArrayList]
+           (java.time LocalDateTime))
   (:require [clojure.walk :as walk]
             [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
@@ -8,16 +10,12 @@
             [common-test.postman.core :refer [*world*]]
             [midje.emission.api :as m-emission]))
 
-
 (defn tap [x]
-  (println "<<<<<<")
-  (clojure.pprint/pprint x)
-  (println ">>>>>") x)
+  (clojure.pprint/pprint x))
 
 (def m macroexpand)
 (def m1 macroexpand-1)
 (def ma walk/macroexpand-all)
-
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -25,6 +23,9 @@
 (defn step4 [world] (assoc world :4 4))
 (defn step5 [world] (assoc world :5 5))
 (defn step6 [world] (assoc world :6 6))
+
+(fact "flow passes the world through transition functions"
+  (flow step1 step2) => (iso {:1 1 :2 2}))
 
 (fact "flow interleaves world-transition functions and facts"
       (flow step1
