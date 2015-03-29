@@ -27,6 +27,9 @@
 (fact "flow passes the world through transition functions"
   (flow step1 step2) => (iso {:1 1 :2 2}))
 
+(fact "flows runs a test"
+      (flow (fact 1 => 1)) => truthy)
+
 (fact "flow interleaves world-transition functions and facts"
       (flow step1
             step2
