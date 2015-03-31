@@ -8,21 +8,10 @@
             [common-test.postman.core :refer [*world*]]
             [midje.emission.api :as m-emission]))
 
-(defn tap [x]
-  (println "tap:::")
-  (clojure.pprint/pprint x)
-  x)
-
-(def m macroexpand)
-(def m1 macroexpand-1)
-(def ma walk/macroexpand-all)
-(defn pp [x]
-  (clojure.pprint/with-pprint-dispatch clojure.pprint/code-dispatch (clojure.pprint/pprint x)))
-
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
 (defn step3 [world] (assoc world :3 3))
-(defn step4 [world] (assoc world :4 4))12
+(defn step4 [world] (assoc world :4 4))
 (defn step5 [world] (assoc world :5 5))
 (defn step6 [world] (assoc world :6 6))
 
@@ -33,8 +22,6 @@
 (fact (flow (fact 1 => 1)) => truthy)
 
 (fact (flow (fact 1 => 1) step1) => truthy)
-
-(pp (m1 (m1 `(flow (fact 1 => 1) step1))))
 
 (fact "flow interleaves world-transition functions and facts"
       (flow step1
@@ -52,8 +39,6 @@
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
 
-; This will print a test failure, but
-; will not affect the result of `lein midje`
 (m-emission/silently
   (def fact-when-step-succeeds
     (fact "this will succeed"
@@ -81,7 +66,7 @@
   (m-emission/silently
     (def fails-first-run-then-succeeds
      (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-       (flow (fact (println "try!") (swap! counter inc) => pos?)) => truthy)))
+       (flow (fact (swap! counter inc) => pos?)) => truthy)))
 
   (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))

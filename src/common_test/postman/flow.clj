@@ -1,19 +1,13 @@
 (ns common-test.postman.flow
-  (:require #_[schema.macros :as sm]
-            #_[schema.core :as s]
+  (:require [schema.macros :as sm]
+            [schema.core :as s]
             [common-test.postman.core :refer [*world*]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (java.io StringWriter)))
 
-(defn tap [x]
-  (clojure.pprint/pprint x)
-  x)
-
-
 (defn check->fn [check-expr]
   (fn [world]
-
     (eval `(let [writer# (new StringWriter)]
              (m-state/with-isolated-output-counters
                [(binding [*world* ~world
@@ -24,11 +18,10 @@
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
 
-#_(def expression s/Any)
-#_(def step [(s/one (s/enum :transition :check) 'kind) (s/one [expression] 'expressions)])
+(def expression s/Any)
+(def step [(s/one (s/enum :transition :check) 'kind) (s/one expression 'expression)])
 ;sm/defn forms->steps :- [step] [forms :- [expression]]
-(defn forms->steps  [forms]
-
+(sm/defn forms->steps :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
                  (classify    [form] (if (form-check? form) [:check form] [:transition form]))]
            (map classify forms)))
@@ -63,27 +56,8 @@
            :else
            [false output]))))
 
-
-
-#_(defmacro test-run
-  ([world expr] `(test-run ~world expr 0))
-  ([world expr elaspsed-so-far]
-   `(let [writer# (new StringWriter)
-          new-world# ~world]
-      (let [[result# time#] (time-run (binding [*world* new-world#
-                                                clojure.test/*test-out* writer#]
-                                        ~expr))
-            elapsed# (+ ~elaspsed-so-far time#)]
-        (println "elapsed:: " elapsed#)
-        (cond result#              [true (str writer#)]
-              (retry? elapsed#)    (test-run ~world ~expr elapsed#)
-              :else                [false (str writer#)])))))
-
-
 (defn gen-test-probe [world expr rest]
-
   `(let [[ok-or-fail# output#] (probe (partial (check->fn '~expr) ~world))]
-     (println "ok or fail::: " ok-or-fail#)
      (if ok-or-fail#
        (execute-steps ~world ~rest)
        (do (emit "Test failed with output:\n" output#)
@@ -93,7 +67,6 @@
   `(execute-steps (~expr ~world) ~rest))
 
 (defmacro execute-steps [world [step & rest]]
-
   (if step
     (let [[kind expr] step]
       (condp = kind
