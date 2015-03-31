@@ -19,14 +19,16 @@
       (flow step1) => (iso {:1 1})
       (flow step1 step2) => (iso {:1 1 :2 2}))
 
-(fact (flow (fact 1 => 1)) => truthy)
-
-(fact (flow (fact 1 => 1) step1) => truthy)
+(fact "embedding tests"
+      (flow (fact 1 => 1)) => truthy)
 
 (fact "flow interleaves world-transition functions and facts"
+      (flow (fact 1 => 1) step1) => truthy
+
       (flow step1
             (fact *world* => {:1 1})
             step2) => {:1 1 :2 2}
+
       (flow step1
             step2
             (fact *world* => (iso {:1 1 :2 2}))
