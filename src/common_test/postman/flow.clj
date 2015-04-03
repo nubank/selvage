@@ -43,8 +43,8 @@
 
 (sm/defn forms->steps :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
-                 (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
-           (map classify forms)))
+          (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
+    (map classify forms)))
 
 (declare execute-steps)
 
