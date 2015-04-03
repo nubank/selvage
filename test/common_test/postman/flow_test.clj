@@ -4,8 +4,7 @@
             [midje.sweet :refer :all]
             [midje.config :as midje-config]
             [midje.emission.state :as midje-state]
-            [common-test.postman.flow :as f :refer [flow]]
-            [common-test.postman.core :refer [*world*]]
+            [common-test.postman.flow :as f :refer [flow *world*]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (clojure.lang Atom)))

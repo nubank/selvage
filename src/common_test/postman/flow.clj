@@ -1,11 +1,30 @@
 (ns common-test.postman.flow
   (:require [schema.macros :as sm]
             [schema.core :as s]
-            [common-test.postman.core :refer [*world*]]
             [midje.sweet :refer [fact anything]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (java.io StringWriter)))
+
+(def ^:dynamic *probe-timeout* 300)
+(def ^:dynamic *probe-sleep-period* 10)
+(def ^:dynamic *verbose* false)
+(def ^:dynamic *world* {})
+
+(def worlds-atom (atom {}))
+
+(defn emit [& strings]
+  (when (m-emission/config-above? :print-nothing)
+    (apply println strings)))
+
+(defn emit-debug [& strings]
+  (when *verbose* (apply emit strings)))
+
+(defn save-world-debug [name world]
+  (swap! worlds-atom assoc name world)
+  world)
+
+(defn worlds [] (deref worlds-atom))
 
 (defn check->fn [check-expr]
   (fn [world]
@@ -14,24 +33,20 @@
                 clojure.test/*test-out* writer]
         [(eval check-expr) (str writer)]))))
 
-(defn emit [& strings]
-  (when (m-emission/config-above? :print-nothing)
-    (apply println strings)))
-
-(def ^:dynamic *probe-timeout* 300)
-(def ^:dynamic *probe-sleep-period* 10)
-(def ^:dynamic *verbose* false)
-
 (def expression s/Any)
 (def step [(s/one (s/enum :transition :check) 'kind) (s/one expression 'expression)])
 
+(defn- fact-desc [fact-form]
+  (if (string? (second fact-form))
+    (second fact-form)
+    (str fact-form)))
+
 (sm/defn forms->steps :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
-                 (classify    [form] (if (form-check? form) [:check form "a fact"] [:transition form (str form)]))]
+                 (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
            (map classify forms)))
 
 (declare execute-steps)
-
 
 (defn time-run [run-function]
   (let [start (. System (nanoTime))
@@ -52,6 +67,7 @@
 
            (retry? elapsed)
            (do (Thread/sleep *probe-sleep-period*)
+               (when *verbose* (emit "\tprobe failed"))
                (probe f elapsed))
 
            :else
@@ -65,11 +81,15 @@
            false))))
 
 (defn gen-transition [world expr name rest]
-  `(try (execute-steps (~expr ~world) ~rest)
-        (catch Throwable throwable#
-          (set! *e throwable#)                  ; letting repl know of the exception
-          (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
-          )))
+  `(try
+     (emit-debug (str "running " ~name))
+     (let [next-world# (save-world-debug ~name
+                                         (~expr ~world))]
+       (execute-steps next-world# ~rest))
+     (catch Throwable throwable#
+       (set! *e throwable#)                  ; letting repl know of the exception
+       (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
+       )))
 
 (defmacro execute-steps [world [step & rest]]
   (if step
@@ -81,4 +101,8 @@
 
 (defmacro flow [& forms]
   (let [steps (forms->steps forms)]
-    `(execute-steps {} ~steps)))
+    `(s/with-fn-validation
+      (emit-debug "Running flow")
+      (let [result# (execute-steps {} ~steps)]
+        (emit-debug "Flow finished" (if result# "succesfully" "with failures"))
+        result#))))
