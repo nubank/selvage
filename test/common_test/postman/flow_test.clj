@@ -27,6 +27,9 @@
       (flow (fact 1 => 1) step1) => truthy
 
       (flow step1
+            (fact *world* => {:1 1})) => truthy
+
+      (flow step1
             (fact *world* => {:1 1})
             step2) => {:1 1 :2 2}
 
@@ -49,6 +52,16 @@
          (fact *world* => (embeds {:byte-array anything})))
        => truthy)
 
+(fact "flow fails when a step throws an exception"
+      (m-emission/silently (flow
+                             step1
+                             (fn [_] (throw (ex-info "Some exception" {:a "a"})))
+                             step2))
+      => falsey
+      (provided
+        (step1 anything) => {}
+        (step2 anything) => irrelevant :times 0))
+
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
 
@@ -66,15 +79,20 @@
     (fact "flow doesn't execute steps post failure"
           (flow (world-fn (reset! last-called 1))
                 (fact "nope" 1 => 2)
-                (world-fn (reset! last-called 2))) => truthy)))
+                (world-fn (reset! last-called 2))) => truthy))
+
+  (def step-throwing-exception-is-a-failure
+    (fact "step throwing exception is also a test failure"
+      (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
+          => truthy)))
 
 (facts "checking for success and failure"
        fact-when-step-succeeds => truthy
        fact-when-step-fails => falsey
-       @last-called => 1)
+       @last-called => 1
+       step-throwing-exception-is-a-failure => falsey)
 
 (do
-
   (def counter (atom -1))
   (m-emission/silently
     (def fails-first-run-then-succeeds
@@ -83,3 +101,4 @@
 
   (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))
+

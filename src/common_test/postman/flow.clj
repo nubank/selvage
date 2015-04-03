@@ -2,6 +2,7 @@
   (:require [schema.macros :as sm]
             [schema.core :as s]
             [common-test.postman.core :refer [*world*]]
+            [midje.sweet :refer [fact anything]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (java.io StringWriter)))
@@ -17,13 +18,14 @@
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
+(def ^:dynamic *verbose* false)
 
 (def expression s/Any)
 (def step [(s/one (s/enum :transition :check) 'kind) (s/one expression 'expression)])
-;sm/defn forms->steps :- [step] [forms :- [expression]]
+
 (sm/defn forms->steps :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
-                 (classify    [form] (if (form-check? form) [:check form] [:transition form]))]
+                 (classify    [form] (if (form-check? form) [:check form "a fact"] [:transition form (str form)]))]
            (map classify forms)))
 
 (declare execute-steps)
@@ -63,15 +65,19 @@
        (do (emit "Test failed with output:\n" output#)
            false))))
 
-(defn gen-transition [world expr rest]
-  `(execute-steps (~expr ~world) ~rest))
+(defn gen-transition [world expr name rest]
+  `(try (execute-steps (~expr ~world) ~rest)
+        (catch Throwable throwable#
+          (set! *e throwable#)                  ; letting repl know of the exception
+          (fact (throw throwable#) => (str "Step \"" ~name "\" to not throw an exception")) ; making the exception a test failure
+          )))
 
 (defmacro execute-steps [world [step & rest]]
   (if step
-    (let [[kind expr] step]
+    (let [[kind expr name] step]
       (condp = kind
         :check (gen-test-probe world expr rest)
-        :transition (gen-transition world expr rest)))
+        :transition (gen-transition world expr name rest)))
     world))
 
 (defmacro flow [& forms]
