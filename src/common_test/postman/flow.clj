@@ -12,9 +12,11 @@
     (let [writer (new StringWriter)]
       (binding [*world* world
                 clojure.test/*test-out* writer]
-        [(eval `(m-state/with-isolated-output-counters
-                  ~check-expr))
-         (str writer)]))))
+        [(eval check-expr) (str writer)]))))
+
+(defn emit [& strings]
+  (when (m-emission/config-above? :print-nothing)
+    (apply println strings)))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -30,9 +32,6 @@
 
 (declare execute-steps)
 
-(defn emit [& strings]
-  (when (m-emission/config-above? :print-nothing)
-    (apply println strings)))
 
 (defmacro time-run [expr]
   `(let [start# (. System (nanoTime))
@@ -46,7 +45,7 @@
 (defn probe
   ([f] (probe f 0))
   ([f elapsed-so-far]
-   (let [[time [test-passed? output]] (time-run (f))
+   (let [[time [test-passed? output]] (time-run (m-state/with-isolated-output-counters (f)))
          elapsed                    (+ elapsed-so-far time)]
      (cond test-passed?
            [true output]
@@ -56,7 +55,7 @@
                (probe f elapsed))
 
            :else
-           [false output]))))
+           (f)))))
 
 (defn gen-test-probe [world expr rest]
   `(let [[ok-or-fail# output#] (probe (partial (check->fn '~expr) ~world))]
@@ -69,7 +68,7 @@
   `(try (execute-steps (~expr ~world) ~rest)
         (catch Throwable throwable#
           (set! *e throwable#)                  ; letting repl know of the exception
-          (fact (throw throwable#) => (str "Step \"" ~name "\" to not throw an exception")) ; making the exception a test failure
+          (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
           )))
 
 (defmacro execute-steps [world [step & rest]]
