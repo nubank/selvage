@@ -6,7 +6,8 @@
             [midje.emission.state :as midje-state]
             [common-test.postman.flow :as f :refer [flow]]
             [common-test.postman.core :refer [*world*]]
-            [midje.emission.api :as m-emission])
+            [midje.emission.api :as m-emission]
+            [midje.emission.state :as m-state])
   (:import (clojure.lang Atom)))
 
 (defn step1 [world] (assoc world :1 1))
@@ -102,3 +103,23 @@
   (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))
 
+
+(facts "on the impact on a test run:"
+       (fact "when a test passes, midje records no failures"
+             (m-emission/silently
+               (flow (fact true => truthy)) => truthy
+               (m-state/output-counters))
+             => (embeds {:midje-failures 0}))
+
+       (fact "when a probe times out and fails, midje records that failure"
+             (m-emission/silently
+               (flow (fact false => truthy)) => falsey
+               (m-state/output-counters))
+             => (embeds {:midje-failures pos?}))
+
+       (def counter2 (atom -2))
+       (fact "when a test passes after a few tries, midje still records no failures"
+             (m-emission/silently
+               (flow (fact (swap! counter inc) => pos?)) => truthy
+               (m-state/output-counters))
+             => (embeds {:midje-failures 0})))
