@@ -8,12 +8,12 @@
 
 (defn check->fn [check-expr]
   (fn [world]
-    (eval `(let [writer# (new StringWriter)]
-             (m-state/with-isolated-output-counters
-               [(binding [*world* ~world
-                          clojure.test/*test-out* writer#]
-
-                  ~check-expr) (str writer#)])))))
+    (let [writer (new StringWriter)]
+      (binding [*world* world
+                clojure.test/*test-out* writer]
+        [(eval `(m-state/with-isolated-output-counters
+                  ~check-expr))
+         (str writer)]))))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)

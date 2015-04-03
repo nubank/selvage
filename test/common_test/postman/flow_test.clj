@@ -6,7 +6,8 @@
             [midje.emission.state :as midje-state]
             [common-test.postman.flow :as f :refer [flow]]
             [common-test.postman.core :refer [*world*]]
-            [midje.emission.api :as m-emission]))
+            [midje.emission.api :as m-emission])
+  (:import (clojure.lang Atom)))
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -37,6 +38,16 @@
             (fact *world* => (iso {:1 1 :2 2 :3 3 :4 4}))
             step5
             step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
+
+(facts "handles non-homoiconic data"
+       (flow
+         #(assoc % :atom (atom 1))
+         (fact *world* => (embeds {:atom #(instance? Atom %)}))
+         #(assoc % :function (constantly 42))
+         (fact *world* => (embeds {:function fn?}))
+         #(assoc % :byte-array (byte-array 1))
+         (fact *world* => (embeds {:byte-array anything})))
+       => truthy)
 
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
