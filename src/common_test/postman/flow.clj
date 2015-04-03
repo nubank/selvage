@@ -33,11 +33,11 @@
 (declare execute-steps)
 
 
-(defmacro time-run [expr]
-  `(let [start# (. System (nanoTime))
-         ret# ~expr
-         elapsed# (/ (double (- (. System (nanoTime)) start#)) 1000000.0)]
-     [elapsed# ret#]))
+(defn time-run [run-function]
+  (let [start (. System (nanoTime))
+         ret (run-function)
+         elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
+     [elapsed ret]))
 
 (defn retry? [elapsed-millis]
   (<= elapsed-millis *probe-timeout*))
@@ -45,7 +45,7 @@
 (defn probe
   ([f] (probe f 0))
   ([f elapsed-so-far]
-   (let [[time [test-passed? output]] (time-run (m-state/with-isolated-output-counters (f)))
+   (let [[time [test-passed? output]] (m-state/with-isolated-output-counters (time-run f))
          elapsed                    (+ elapsed-so-far time)]
      (cond test-passed?
            [true output]
