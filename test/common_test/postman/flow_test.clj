@@ -108,13 +108,14 @@
              (m-emission/silently
                (flow (fact true => truthy)) => truthy
                (m-state/output-counters))
-             => (embeds {:midje-failures 0}))
+             => (embeds {:midje-failures 0
+                         :midje-passes   1}))
 
        (fact "when a probe times out and fails, midje records that failure"
              (m-emission/silently
                (flow (fact false => truthy)) => falsey
                (m-state/output-counters))
-             => (embeds {:midje-failures pos?}))
+             => (embeds {:midje-failures 1}))
 
        (def counter2 (atom -2))
        (fact "when a test passes after a few tries, midje still records no failures"

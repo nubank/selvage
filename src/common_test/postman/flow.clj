@@ -63,7 +63,8 @@
    (let [[time [test-passed? output]] (m-state/with-isolated-output-counters (time-run f))
          elapsed                    (+ elapsed-so-far time)]
      (cond test-passed?
-           [true output]
+           (do (m-emission/pass)
+               [true output])
 
            (retry? elapsed)
            (do (Thread/sleep *probe-sleep-period*)
