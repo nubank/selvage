@@ -1,6 +1,5 @@
 (ns common-test.postman.flow
-  (:require [schema.macros :as sm]
-            [schema.core :as s]
+  (:require [schema.core :as s]
             [midje.sweet :refer [fact anything]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
@@ -41,7 +40,7 @@
     (second fact-form)
     (str fact-form)))
 
-(sm/defn forms->steps :- [step] [forms :- [expression]]
+(s/defn forms->steps :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
           (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
     (map classify forms)))
@@ -103,7 +102,7 @@
 (defmacro flow [& forms]
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
-      (emit-debug "Running flow")
-      (let [result# (execute-steps {} ~steps)]
-        (emit-debug "Flow finished" (if result# "succesfully" "with failures"))
-        result#))))
+       (emit-debug "Running flow")
+       (let [result# (execute-steps {} ~steps)]
+         (emit-debug "Flow finished" (if result# "succesfully" "with failures"))
+         result#))))
