@@ -99,10 +99,19 @@
         :transition (gen-transition world expr name rest)))
     world))
 
-(defmacro flow [& forms]
+(defn forms->flow [forms]
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
        (emit-debug "Running flow")
        (let [result# (execute-steps {} ~steps)]
          (emit-debug "Flow finished" (if result# "succesfully" "with failures"))
          result#))))
+
+(defmacro flow [& forms]
+  (forms->flow forms))
+
+(defmacro e2e-flow [& forms]
+  `(binding [*probe-timeout* 5000
+             *verbose*       true]
+     ~(forms->flow forms)))
+
