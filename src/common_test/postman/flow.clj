@@ -109,9 +109,3 @@
 
 (defmacro flow [& forms]
   (forms->flow forms))
-
-(defmacro e2e-flow [& forms]
-  `(binding [*probe-timeout* 5000
-             *verbose*       true]
-     ~(forms->flow forms)))
-
