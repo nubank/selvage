@@ -2,7 +2,9 @@
   (:require [schema.core :as s]
             [midje.sweet :refer [fact anything]]
             [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state])
+            [midje.emission.state :as m-state]
+            [common-core.visibility :as vis]
+            [clojure.string :as str])
   (:import (java.io StringWriter)))
 
 (def ^:dynamic *probe-timeout* 300)
@@ -14,10 +16,16 @@
 
 (defn emit [& strings]
   (when (m-emission/config-above? :print-nothing)
-    (apply println strings)))
+    (apply print strings)))
+
+(defn emit-ln [& strings]
+  (emit (format "%-40s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
 
 (defn emit-debug [& strings]
   (when *verbose* (apply emit strings)))
+
+(defn emit-debug-ln [& strings]
+  (emit-debug (format "%-40s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
 
 (defn save-world-debug [name world]
   (swap! worlds-atom assoc name world)
@@ -60,34 +68,41 @@
   ([f] (probe f 0))
   ([f elapsed-so-far]
    (let [[time [test-passed? output]] (m-state/with-isolated-output-counters (time-run f))
-         elapsed                    (+ elapsed-so-far time)]
+         elapsed                      (+ elapsed-so-far time)]
      (cond test-passed?
            (do (m-emission/pass)
+               (emit-debug-ln "test passed")
                [true output])
 
            (retry? elapsed)
            (do (Thread/sleep *probe-sleep-period*)
-               (when *verbose* (emit "\tprobe failed"))
+               (emit-debug "x")
                (probe f elapsed))
 
            :else
-           (f)))))
+           (do
+             (emit-debug "\n")
+             (f))))))
 
 (defn gen-test-probe [world expr rest]
-  `(let [[ok-or-fail# output#] (probe (partial (check->fn '~expr) ~world))]
-     (if ok-or-fail#
-       (execute-steps ~world ~rest)
-       (do (emit "Test failed with output:\n" output#)
-           false))))
+  `(when (vis/with-split-cid
+           (let [[ok-or-fail# output#] (do
+                                         (emit-debug-ln "probing assertion...")
+                                         (probe (partial (check->fn '~expr) ~world)))]
+             (when-not ok-or-fail#
+               (emit-ln "Test failed with output:\n" output# "\n"))
+             ok-or-fail#))
+     (execute-steps ~world ~rest)))
 
 (defn gen-transition [world expr name rest]
   `(try
-     (emit-debug (str "running " ~name))
-     (let [next-world# (save-world-debug ~name
-                                         (~expr ~world))]
+     (let [next-world# (vis/with-split-cid
+                         (do
+                           (emit-debug-ln (str "running " ~name))
+                           (save-world-debug ~name (~expr ~world))))]
        (execute-steps next-world# ~rest))
      (catch Throwable throwable#
-       (set! *e throwable#)                  ; letting repl know of the exception
+       (set! *e throwable#)                                 ; letting repl know of the exception
        (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
        )))
 
@@ -102,10 +117,13 @@
 (defn forms->flow [forms]
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
-       (emit-debug "Running flow")
-       (let [result# (execute-steps {} ~steps)]
-         (emit-debug "Flow finished" (if result# "succesfully" "with failures"))
-         result#))))
+       (vis/with-split-cid "FLOW"
+         (do
+           (emit-debug-ln "Running flow")
+           (let [result# (execute-steps {} ~steps)]
+             (emit-debug-ln "Flow finished" (if result# "succesfully" "with failures"))
+             (emit-debug "\n")
+             result#))))))
 
 (defmacro flow [& forms]
   (forms->flow forms))
