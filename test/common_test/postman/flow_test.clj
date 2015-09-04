@@ -18,7 +18,8 @@
 
 (fact "flow passes the world through transition functions"
       (flow step1) => (iso {:1 1})
-      (flow step1 step2) => (iso {:1 1 :2 2}))
+      (flow step1 step2) => (iso {:1 1 :2 2})
+      (flow "world goes through" step1 step2) => (iso {:1 1 :2 2}))
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
@@ -64,6 +65,9 @@
 
 (fact "flow accepts a future-fact and stops with falsey"
       (flow (future-fact "Some future fact")) => falsey)
+
+(fact "flow accepts a string as the first form"
+      (flow "2 + 2 = 4" (fact (+ 2 2) => 4)) => truthy)
 
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))

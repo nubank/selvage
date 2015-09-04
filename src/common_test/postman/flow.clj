@@ -126,4 +126,6 @@
              result#))))))
 
 (defmacro flow [& forms]
-  (forms->flow forms))
+  (forms->flow (if (string? (first forms))
+                 (rest forms)
+                 forms)))
