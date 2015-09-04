@@ -49,7 +49,7 @@
     (str fact-form)))
 
 (s/defn forms->steps :- [step] [forms :- [expression]]
-  (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
+  (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
           (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
     (map classify forms)))
 
@@ -126,4 +126,6 @@
              result#))))))
 
 (defmacro flow [& forms]
-  (forms->flow forms))
+  (forms->flow (if (string? (first forms))
+                 (rest forms)
+                 forms)))
