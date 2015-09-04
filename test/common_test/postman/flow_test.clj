@@ -62,6 +62,9 @@
         (step1 anything) => {}
         (step2 anything) => irrelevant :times 0))
 
+(fact "flow accepts a future-fact and stops with falsey"
+      (flow (future-fact "Some future fact")) => falsey)
+
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
 
