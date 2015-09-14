@@ -114,18 +114,22 @@
         :transition (gen-transition world expr name rest)))
     world))
 
-(defn forms->flow [forms]
+(defn forms->flow [flow-name forms]
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
        (vis/with-split-cid "FLOW"
          (do
-           (emit-debug-ln "Running flow")
+           (emit-debug-ln (str "Running flow: " ~flow-name))
            (let [result# (execute-steps {} ~steps)]
              (emit-debug-ln "Flow finished" (if result# "succesfully" "with failures"))
              (emit-debug "\n")
              result#))))))
 
 (defmacro flow [& forms]
-  (forms->flow (if (string? (first forms))
-                 (rest forms)
-                 forms)))
+  (let [flow-name (str (ns-name *ns*)
+                       ":"
+                       (:line (meta &form)))]
+       (if (string? (first forms))
+         (forms->flow (str flow-name " " (first forms)) (rest forms))
+         (forms->flow flow-name forms))))
+

@@ -130,3 +130,10 @@
                (flow (fact (swap! counter inc) => pos?)) => truthy
                (m-state/output-counters))
              => (embeds {:midje-failures 0})))
+
+
+(fact "it logs ns and line number on flow"
+      (flow "test flow log") => irrelevant
+      (provided
+        (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log") => irrelevant
+        (f/emit-debug-ln "Flow finished" "succesfully") => irrelevant))
