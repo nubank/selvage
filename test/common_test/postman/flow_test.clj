@@ -132,8 +132,15 @@
              => (embeds {:midje-failures 0})))
 
 
-(fact "it logs ns and line number on flow"
-      (flow "test flow log") => irrelevant
-      (provided
-        (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log") => irrelevant
-        (f/emit-debug-ln "Flow finished" "succesfully") => irrelevant))
+(facts "it logs ns and line number on flow"
+       (fact "when a test description is given"
+             (flow "test flow log" (fact 1 => 1)) => irrelevant
+             (provided
+               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log") => irrelevant
+               (f/emit-debug-ln anything & anything) => irrelevant :times 3))
+
+       (fact "when no test description is given"
+             (flow (fact 1 => 1)) => irrelevant
+             (provided
+               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+") => irrelevant
+               (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
