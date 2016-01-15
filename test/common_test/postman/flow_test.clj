@@ -3,7 +3,8 @@
             [midje.sweet :refer :all]
             [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
             [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state])
+            [midje.emission.state :as m-state]
+            [common-core.test-helpers :as th])
   (:import (clojure.lang Atom)))
 
 (defn step1 [world] (assoc world :1 1))
@@ -99,7 +100,7 @@
 
   (def step-throwing-exception-is-a-failure
     (fact "step throwing exception is also a test failure"
-      (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
+          (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
           => truthy)))
 
 (facts "checking for success and failure"
@@ -112,8 +113,8 @@
   (def counter (atom -1))
   (m-emission/silently
     (def fails-first-run-then-succeeds
-     (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-       (flow (fact (swap! counter inc) => pos?)) => truthy)))
+      (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
+            (flow (fact (swap! counter inc) => pos?)) => truthy)))
 
   (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))
@@ -154,18 +155,12 @@
                (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+") => irrelevant
                (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
 
-#_(fact "wrap flow forms inside fact with metadata"
-      (forms->flow "rataria" [(+ 1 2) (fact 1 => 1)])
-      => '(schema.core/with-fn-validation
-           (common-core.visibility/with-split-cid
-             "FLOW"
-             (midje.sweet/facts
-               :postman
-               (do
-                 (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "rataria"))
-                 (clojure.core/let
-                   [result__63733__auto__
-                    (common-test.postman.flow/execute-steps {} ([:transition 3 "3"] [:transition true "true"]))]
-                   (common-test.postman.flow/emit-debug-ln "Flow finished" (if result__63733__auto__ "succesfully" "with failures"))
-                   (common-test.postman.flow/emit-debug "\n")
-                   result__63733__auto__))))))
+(fact "wrap flow forms inside fact with metadata"
+      (flow "rataria" (fact 1 => 1))
+      =expands-to=>
+      (schema.core/with-fn-validation
+        (common-core.visibility/with-split-cid "FLOW"
+                                               (midje.sweet/facts :postman "common-test.postman.flow-test:159 rataria"
+                                                                  (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:159 rataria"))
+                                                                      (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159)) "(fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159))"])) "succesfully" "with failures"))
+                                                                      (common-test.postman.flow/emit-debug "\n"))))))

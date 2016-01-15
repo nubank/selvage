@@ -118,13 +118,13 @@
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
        (vis/with-split-cid "FLOW"
-                           (facts :postman
+                           (facts :postman ~flow-name
                                  (do
                                    (emit-debug-ln (str "Running flow: " ~flow-name))
-                                   (let [result# (execute-steps {} ~steps)]
-                                     (emit-debug-ln "Flow finished" (if result# "succesfully" "with failures"))
-                                     (emit-debug "\n")
-                                     result#)))))))
+                                   (emit-debug-ln "Flow finished" (if (execute-steps {} ~steps)
+                                                                    "succesfully"
+                                                                    "with failures"))
+                                   (emit-debug "\n")))))))
 
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*)
