@@ -1,6 +1,6 @@
 (ns common-test.postman.flow
   (:require [schema.core :as s]
-            [midje.sweet :refer [fact anything]]
+            [midje.sweet :refer [fact facts anything]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
@@ -118,12 +118,13 @@
   (let [steps (forms->steps forms)]
     `(s/with-fn-validation
        (vis/with-split-cid "FLOW"
-         (do
-           (emit-debug-ln (str "Running flow: " ~flow-name))
-           (let [result# (execute-steps {} ~steps)]
-             (emit-debug-ln "Flow finished" (if result# "succesfully" "with failures"))
-             (emit-debug "\n")
-             result#))))))
+                           (facts :postman ~flow-name
+                                 (do
+                                   (emit-debug-ln (str "Running flow: " ~flow-name))
+                                   (emit-debug-ln "Flow finished" (if (execute-steps {} ~steps)
+                                                                    "succesfully"
+                                                                    "with failures"))
+                                   (emit-debug "\n")))))))
 
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*)
@@ -132,4 +133,3 @@
        (if (string? (first forms))
          (forms->flow (str flow-name " " (first forms)) (rest forms))
          (forms->flow flow-name forms))))
-
