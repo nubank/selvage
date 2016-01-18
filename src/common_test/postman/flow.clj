@@ -5,7 +5,7 @@
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
             [clojure.string :as str])
-  (:import (java.io StringWriter)))
+  (:import [java.io StringWriter]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
