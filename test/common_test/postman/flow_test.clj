@@ -1,12 +1,10 @@
 (ns common-test.postman.flow-test
-  (:require [clojure.walk :as walk]
-            [common-core.test-helpers :refer [embeds iso]]
+  (:require [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
-            [midje.config :as midje-config]
-            [midje.emission.state :as midje-state]
-            [common-test.postman.flow :as f :refer [flow *world*]]
+            [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
             [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state])
+            [midje.emission.state :as m-state]
+            [common-core.test-helpers :as th])
   (:import (clojure.lang Atom)))
 
 (defn step1 [world] (assoc world :1 1))
@@ -17,9 +15,16 @@
 (defn step6 [world] (assoc world :6 6))
 
 (fact "flow passes the world through transition functions"
-      (flow step1) => (iso {:1 1})
-      (flow step1 step2) => (iso {:1 1 :2 2})
-      (flow "world goes through" step1 step2) => (iso {:1 1 :2 2}))
+      (flow step1) => true
+      (provided (step1 {}) => {:1 1})
+
+      (flow step1 step2) => true
+      (provided (step1 {}) => {:1 1}
+                (step2 {:1 1}) => {:1 1 :2 2})
+
+      (flow "world goes through" step1 step2) => true
+      (provided (step1 {}) => {:1 1}
+                (step2 {:1 1}) => {:1 1 :2 2}))
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
@@ -32,7 +37,9 @@
 
       (flow step1
             (fact *world* => {:1 1})
-            step2) => {:1 1 :2 2}
+            step2) => true
+      (provided (step1 {}) => {:1 1}
+                (step2 {:1 1}) => {:1 1 :2 2})
 
       (flow step1
             step2
@@ -41,7 +48,13 @@
             step4
             (fact *world* => (iso {:1 1 :2 2 :3 3 :4 4}))
             step5
-            step6) => (iso {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
+            step6) => true
+      (provided (step1 {}) => {:1 1}
+                (step2 {:1 1}) => {:1 1 :2 2}
+                (step3 {:1 1 :2 2}) => {:1 1 :2 2 :3 3}
+                (step4 {:1 1 :2 2 :3 3}) => {:1 1 :2 2 :3 3 :4 4}
+                (step5 {:1 1 :2 2 :3 3 :4 4}) => {:1 1 :2 2 :3 3 :4 4 :5 5}
+                (step6 {:1 1 :2 2 :3 3 :4 4 :5 5}) => {:1 1 :2 2 :3 3 :4 4 :5 5 :6 6}))
 
 (facts "handles non-homoiconic data"
        (flow
@@ -62,9 +75,6 @@
       (provided
         (step1 anything) => {}
         (step2 anything) => irrelevant :times 0))
-
-(fact "flow accepts a future-fact and stops with falsey"
-      (flow (future-fact "Some future fact")) => falsey)
 
 (fact "flow accepts a string as the first form"
       (flow "2 + 2 = 4" (fact (+ 2 2) => 4)) => truthy)
@@ -90,7 +100,7 @@
 
   (def step-throwing-exception-is-a-failure
     (fact "step throwing exception is also a test failure"
-      (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
+          (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
           => truthy)))
 
 (facts "checking for success and failure"
@@ -103,8 +113,8 @@
   (def counter (atom -1))
   (m-emission/silently
     (def fails-first-run-then-succeeds
-     (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-       (flow (fact (swap! counter inc) => pos?)) => truthy)))
+      (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
+            (flow (fact (swap! counter inc) => pos?)) => truthy)))
 
   (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))
@@ -144,3 +154,13 @@
              (provided
                (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+") => irrelevant
                (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
+
+(fact "wrap flow forms inside fact with metadata"
+      (flow "rataria" (fact 1 => 1))
+      =expands-to=>
+      (schema.core/with-fn-validation
+        (common-core.visibility/with-split-cid "FLOW"
+                                               (midje.sweet/facts :postman "common-test.postman.flow-test:159 rataria"
+                                                                  (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:159 rataria"))
+                                                                      (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159)) "(fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159))"])) "succesfully" "with failures"))
+                                                                      (common-test.postman.flow/emit-debug "\n"))))))
