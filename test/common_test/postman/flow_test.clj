@@ -3,8 +3,7 @@
             [midje.sweet :refer :all]
             [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
             [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state]
-            [common-core.test-helpers :as th])
+            [midje.emission.state :as m-state])
   (:import (clojure.lang Atom)))
 
 (defn step1 [world] (assoc world :1 1))
@@ -160,7 +159,7 @@
       =expands-to=>
       (schema.core/with-fn-validation
         (common-core.visibility/with-split-cid "FLOW"
-                                               (midje.sweet/facts :postman "common-test.postman.flow-test:159 rataria"
-                                                                  (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:159 rataria"))
-                                                                      (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159)) "(fact 1 => 1 :position (midje.parsing.util.file-position/line-number-known 159))"])) "succesfully" "with failures"))
+                                               (midje.sweet/facts :postman "common-test.postman.flow-test:158 rataria"
+                                                                  (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:158 rataria"))
+                                                                      (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (pointer.core/line-number-known 158)) "(fact 1 => 1 :position (pointer.core/line-number-known 158))"])) "succesfully" "with failures"))
                                                                       (common-test.postman.flow/emit-debug "\n"))))))
