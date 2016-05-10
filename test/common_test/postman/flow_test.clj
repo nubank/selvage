@@ -4,7 +4,8 @@
             [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
-  (:import (clojure.lang Atom)))
+  (:import (clojure.lang Atom)
+           (java.io StringWriter)))
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -140,7 +141,6 @@
                (m-state/output-counters))
              => (embeds {:midje-failures 0})))
 
-
 (facts "it logs ns and line number on flow"
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
@@ -163,3 +163,61 @@
                                                                   (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:158 rataria"))
                                                                       (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (pointer.core/line-number-known 158)) "(fact 1 => 1 :position (pointer.core/line-number-known 158))"])) "succesfully" "with failures"))
                                                                       (common-test.postman.flow/emit-debug "\n"))))))
+
+
+
+(comment
+
+  (def thunk
+    (fn [world]
+      (let [writer (new StringWriter)]
+        (binding [f/*world* world
+                  clojure.test/*test-out* writer]
+          (let [res (fact true => falsey)]
+            [res (str writer)])))))
+
+  (defn run-steps [steps]
+    (letfn [(run-step [[world _] [step-type f desc]]
+              (let [[next-world desc] (f world)]
+                (if next-world
+                  [next-world desc]
+                  (reduced [next-world desc])))
+              )]
+      (reduce run-step [{} ""] steps)))
+
+  (defn format-result [[success? desc]]
+    (if success?
+      (println "Flow completed successfully")
+      (println "Flow failed:\n" desc)))
+
+  (defn format-result2 [x]
+    #nu/tapd x)
+
+  (defmacro flow2 [& forms]
+    `(->> ~(f/forms->steps-exprs forms)
+          run-steps
+          format-result))
+
+  (->> (to-steps step1) run-steps)
+
+  (do
+    (flow2 step1 step2)
+
+    (flow2 (fact true => truthy))
+
+    (flow2 (fact true => falsey)))
+
+  (->> (to-steps
+         step1
+         (fact *world* => {:1 1})
+         step2)
+       (map (fn [[type f desc]] (apply f [{:w :W}]))))
+
+
+  (-> (f/forms->steps `(step1))
+      first
+      second
+      (apply [{}])
+      )
+
+  )

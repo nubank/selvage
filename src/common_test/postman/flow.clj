@@ -133,3 +133,23 @@
        (if (string? (first forms))
          (forms->flow (str flow-name " " (first forms)) (rest forms))
          (forms->flow flow-name forms))))
+
+(defn check->fn-expr [check-expr]
+  `(fn [world#]
+     (let [writer# (new StringWriter)]
+       (binding [*world* world#
+                 clojure.test/*test-out* writer#]
+         [(when ~check-expr world#) (str writer#)]))))
+
+; try-catch
+(defn transition->fn-expr [transition-expr]
+  `(fn [world#]
+     (try [(~transition-expr world#) ""]
+       (catch Exception e#
+         [false e#]))))
+
+(s/defn forms->steps-exprs :- [step] [forms :- [expression]]
+  (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
+          (classify    [form] (if (form-check? form) [:check (check->fn-expr form) (fact-desc form)]
+                                                     [:transition (transition->fn-expr form) (str form)]))]
+    (cons 'list (map classify forms))))
