@@ -137,7 +137,7 @@
        (def counter2 (atom -2))
        (fact "when a test passes after a few tries, midje still records no failures"
              (m-emission/silently
-               (flow (fact (swap! counter inc) => pos?)) => truthy
+               (flow (fact (swap! counter2 inc) => pos?)) => truthy
                (m-state/output-counters))
              => (embeds {:midje-failures 0})))
 
