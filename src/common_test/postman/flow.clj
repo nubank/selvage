@@ -126,7 +126,7 @@
                                                                     "with failures"))
                                    (emit-debug "\n")))))))
 
-(defmacro flow [& forms]
+(defmacro flow-old [& forms]
   (let [flow-name (str (ns-name *ns*)
                        ":"
                        (:line (meta &form)))]
@@ -139,17 +139,59 @@
      (let [writer# (new StringWriter)]
        (binding [*world* world#
                  clojure.test/*test-out* writer#]
-         [(when ~check-expr world#) (str writer#)]))))
+         (emit-debug-ln "probing assertion...")
+         (let [result#  ~check-expr
+               success# (when result#
+                          (emit-debug-ln "test passed")
+                          world#)]
+           [success# (str writer#)])))))
 
 ; try-catch
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try [(~transition-expr world#) ""]
-       (catch Exception e#
-         [false e#]))))
+       (catch Throwable throwable#
+         (fact (throw throwable#) => (str "Step '" ~(str transition-expr) "' to not throw an exception"))
+         [false throwable#]))))
 
 (s/defn forms->steps-exprs :- [step] [forms :- [expression]]
   (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
           (classify    [form] (if (form-check? form) [:check (check->fn-expr form) (fact-desc form)]
                                                      [:transition (transition->fn-expr form) (str form)]))]
     (cons 'list (map classify forms))))
+
+(defn run-steps [steps]
+  (letfn [(run-step [[world _] [step-type f desc]]
+            (let [[next-world desc] (f world)]
+              (if next-world
+                [next-world desc]
+                (reduced [next-world desc])))
+            )]
+    (reduce run-step [{} ""] steps)))
+
+(defn format-result [flow-description [success? desc]]
+  (do
+    (emit-debug-ln (str "Running flow: " flow-description))
+    (emit-debug-ln "Flow finished" (if success?
+                                     "succesfully"
+                                     "with failures"))
+    (emit-debug "\n"))
+  (boolean success?))
+
+(defn wrap-with-metadata [flow-name flow-expr]
+  `(s/with-fn-validation
+     (vis/with-split-cid "FLOW"
+                         (facts :postman ~flow-name
+                           ~flow-expr))))
+
+(defmacro flow [& forms]
+  (let [flow-name (str (ns-name *ns*)
+                       ":"
+                       (:line (meta &form)))
+        [flow-description in-forms] (if (string? (first forms))
+                                      [(str flow-name " " (first forms)) (rest forms)]
+                                      [flow-name forms])]
+    (wrap-with-metadata flow-description
+                        `(->> ~(forms->steps-exprs in-forms)
+                              run-steps
+                              (format-result ~flow-description)))))
