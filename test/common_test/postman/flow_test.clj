@@ -15,6 +15,8 @@
 (defn step6 [world] (assoc world :6 6))
 
 (fact "flow passes the world through transition functions"
+      (flow) => true
+
       (flow step1) => true
       (provided (step1 {}) => {:1 1})
 
@@ -116,7 +118,7 @@
       (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
             (flow (fact (swap! counter inc) => pos?)) => truthy)))
 
-  (future-facts "every check is retried until it passes"
+  (facts "every check is retried until it passes"
          fails-first-run-then-succeeds => truthy))
 
 
@@ -135,7 +137,7 @@
              => (embeds {:midje-failures 1}))
 
        (def counter2 (atom -2))
-       (future-fact "when a test passes after a few tries, midje still records no failures"
+       (fact "when a test passes after a few tries, midje still records no failures"
              (m-emission/silently
                (flow (fact (swap! counter2 inc) => pos?)) => truthy
                (m-state/output-counters))
@@ -160,7 +162,7 @@
       (embeds
         '(schema.core/with-fn-validation
           (common-core.visibility/with-split-cid "FLOW"
-                                                 (midje.sweet/facts :postman "common-test.postman.flow-test:158 rataria"
+                                                 (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"
                                                    )))))
 
 

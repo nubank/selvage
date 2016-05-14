@@ -56,9 +56,9 @@
 (declare execute-steps)
 
 (defn time-run [run-function]
-  (let [start (. System (nanoTime))
-         ret (run-function)
-         elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
+  (let [start    (. System (nanoTime))
+        ret     (run-function)
+        elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
      [elapsed ret]))
 
 (defn retry? [elapsed-millis]
@@ -154,20 +154,56 @@
          (fact (throw throwable#) => (str "Step '" ~(str transition-expr) "' to not throw an exception"))
          [false throwable#]))))
 
+(defn retriable? [[kind f desc]]
+  (= :check kind))
+
+(def max-retries 5)
+
+(defn retry [[kind f desc]]
+  (let [output-counters-before (m-state/output-counters)]
+    (letfn [(retry-f [retries w]
+              (m-state/set-output-counters! output-counters-before)
+              (let [[success? _ :as res] (f w)]
+                (if success?
+                  res
+                  (if (< retries max-retries)
+                    (do
+                      (Thread/sleep *probe-sleep-period*)
+                      (retry-f (inc retries) w))
+                    [false "timed out"]))))]
+      [kind (partial retry-f 0) desc])))
+
+(defn retry-sequences [steps]
+  (loop [[step & rest] steps
+         result []]
+    (if step
+      (let [newstep (if (retriable? step) (list retry step) step)]
+        (recur rest (conj result newstep)))
+      result)))
+
+(defn run-step [[world _] [step-type f desc]]
+  (let [[next-world desc] (f world)]
+    (if next-world
+      [next-world desc]
+      (reduced [next-world desc]))))
+
 (s/defn forms->steps-exprs :- [step] [forms :- [expression]]
-  (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (classify    [form] (if (form-check? form) [:check (check->fn-expr form) (fact-desc form)]
-                                                     [:transition (transition->fn-expr form) (str form)]))]
-    (cons 'list (map classify forms))))
+  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
+          (classify  [form] (if (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
+                                                 [:transition (transition->fn-expr form) (str form)]))]
+    (->> forms (map classify) retry-sequences seq)))
+
+(defn run-step-sequence [s0 steps]
+  (reduce run-step s0 steps))
+
+(defn steps-to-step [steps]
+  [:sequence (fn [w] (run-step-sequence [w ""] steps)) ""])
 
 (defn run-steps [steps]
-  (letfn [(run-step [[world _] [step-type f desc]]
-            (let [[next-world desc] (f world)]
-              (if next-world
-                [next-world desc]
-                (reduced [next-world desc])))
-            )]
-    (reduce run-step [{} ""] steps)))
+  (->> steps
+       (map vector)
+       (map steps-to-step)
+       (run-step-sequence [{} ""])))
 
 (defn format-result [flow-description [success? desc]]
   (do
@@ -192,6 +228,6 @@
                                       [(str flow-name " " (first forms)) (rest forms)]
                                       [flow-name forms])]
     (wrap-with-metadata flow-description
-                        `(->> ~(forms->steps-exprs in-forms)
+                        `(->> (list ~@(forms->steps-exprs in-forms))
                               run-steps
                               (format-result ~flow-description)))))
