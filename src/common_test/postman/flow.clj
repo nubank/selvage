@@ -41,7 +41,7 @@
         [(eval check-expr) (str writer)]))))
 
 (def expression s/Any)
-(def step [(s/one (s/enum :transition :check) 'kind) (s/one expression 'expression)])
+(def step [(s/one (s/enum :transition :check :query) 'kind) (s/one expression 'expression)])
 
 (defn- fact-desc [fact-form]
   (if (string? (second fact-form))
@@ -139,7 +139,7 @@
      (let [writer# (new StringWriter)]
        (binding [*world* world#
                  clojure.test/*test-out* writer#]
-         (emit-debug-ln "probing assertion...")
+         (emit-debug-ln "probing assertion...")             ;TODO: review output
          (let [result#  ~check-expr
                success# (when result#
                           (emit-debug-ln "test passed")
@@ -155,11 +155,11 @@
          [false throwable#]))))
 
 (defn retriable? [[kind f desc]]
-  (= :check kind))
+  (-> kind #{:check :query} boolean))
 
 (def max-retries 5)
 
-(defn retry [[kind f desc]]
+(defn retry [f]
   (let [output-counters-before (m-state/output-counters)]
     (letfn [(retry-f [retries w]
               (m-state/set-output-counters! output-counters-before)
@@ -171,15 +171,11 @@
                       (Thread/sleep *probe-sleep-period*)
                       (retry-f (inc retries) w))
                     [false "timed out"]))))]
-      [kind (partial retry-f 0) desc])))
+      (partial retry-f 0))))
 
-(defn retry-sequences [steps]
-  (loop [[step & rest] steps
-         result []]
-    (if step
-      (let [newstep (if (retriable? step) (list retry step) step)]
-        (recur rest (conj result newstep)))
-      result)))
+
+(defn partition-group-by [pred coll]
+  (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
 (defn run-step [[world _] [step-type f desc]]
   (let [[next-world desc] (f world)]
@@ -187,22 +183,37 @@
       [next-world desc]
       (reduced [next-world desc]))))
 
-(s/defn forms->steps-exprs :- [step] [forms :- [expression]]
-  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (classify  [form] (if (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
-                                                 [:transition (transition->fn-expr form) (str form)]))]
-    (->> forms (map classify) retry-sequences seq)))
-
 (defn run-step-sequence [s0 steps]
   (reduce run-step s0 steps))
 
 (defn steps-to-step [steps]
-  [:sequence (fn [w] (run-step-sequence [w ""] steps)) ""])
+  `[:sequence (fn [w#] (run-step-sequence [w# ""] (list ~@steps))) "multiple steps"])
+
+(defn retry-expr [[kind f-expr desc]]
+  `[:retry (fn [w#] ((retry ~f-expr) w#)) ~desc])
+
+(defn retry-sequences [steps]
+  (->> steps
+       ;(map (fn [step] (if (retriable? step) (list retry step) step)))
+       (partition-group-by retriable?)
+       (mapcat (fn [[retriable-seq? steps]]
+                 (if retriable-seq?
+                   [(retry-expr (steps-to-step steps))]
+                   steps)))
+       ))
+
+(s/defn forms->steps-exprs :- [step] [forms :- [expression]]
+  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
+          (is-query? [form] (-> form macroexpand meta ::query))
+          (classify  [form] (cond (is-check? form) [:check      (check->fn-expr form) (fact-desc form)]
+                                  (is-query? form) [:query      (transition->fn-expr form) (str form)]
+                                  :else            [:transition (transition->fn-expr form) (str form)]))]
+    (->> forms (map classify) retry-sequences seq)))
 
 (defn run-steps [steps]
   (->> steps
-       (map vector)
-       (map steps-to-step)
+       ;(map vector)
+       ;(map steps-to-step)
        (run-step-sequence [{} ""])))
 
 (defn format-result [flow-description [success? desc]]

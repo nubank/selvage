@@ -111,15 +111,34 @@
        @last-called => 1
        step-throwing-exception-is-a-failure => falsey)
 
-(do
-  (def counter (atom -1))
-  (m-emission/silently
-    (def fails-first-run-then-succeeds
-      (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-            (flow (fact (swap! counter inc) => pos?)) => truthy)))
+(facts "checks are retried"
+  (let [counter (atom -1)]
+   (m-emission/silently
+     (def fails-first-run-then-succeeds
+       (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
+             (flow (fact (swap! counter inc) => pos?)) => truthy)))
 
-  (facts "every check is retried until it passes"
-         fails-first-run-then-succeeds => truthy))
+   (facts "every check is retried until it passes"
+     fails-first-run-then-succeeds => truthy)))
+
+(defmacro fnq [& forms]
+  `^::f/query (fn ~@forms))
+
+(defmacro defnq [name & forms]
+  `(def ~name ^::f/query (fn ~@forms)))
+
+(let [query-count (atom 0)]
+  (fact "query steps preceeding checks are also retried"
+        (def succeeds-on-third-step-execution
+          (fact "test"
+                (flow (fnq [w]
+                        {:x (swap! query-count inc)})
+                      (fact *world* => (embeds {:x 3}))) => truthy
+                #_(provided
+                    (query-step-1 anything) =streams=> [{:x 1} {:x 2} {:x 3}]))))
+
+      (fact "retries one step preceeding a check until the check passes"
+            succeeds-on-third-step-execution => truthy))
 
 
 (facts "on the impact on a test run:"
