@@ -122,19 +122,23 @@
 
 (def max-retries 5)
 
-(defn retry [f]
+(defn resetting-midje-counters [f]
   (let [output-counters-before (m-state/output-counters)]
-    (letfn [(retry-f [retries w]
-              (m-state/set-output-counters! output-counters-before)
-              (let [[success? _ :as res] (f w)]
-                (if success?
-                  res
-                  (if (< retries max-retries)
-                    (do
-                      (Thread/sleep *probe-sleep-period*)
-                      (retry-f (inc retries) w))
-                    [false "timed out"]))))]
-      (partial retry-f 0))))
+    (fn [& args]
+      (m-state/set-output-counters! output-counters-before)
+      (apply f args))))
+
+(defn retry [f]
+  (letfn [(retry-f [retries f w]
+            (let [[success? _ :as res] (f w)]
+              (if success?
+                res
+                (if (< retries max-retries)
+                  (do
+                    (Thread/sleep *probe-sleep-period*)
+                    (retry-f (inc retries) f w))
+                  [false "timed out"]))))]
+    (partial retry-f 0 (resetting-midje-counters f))))
 
 
 (defn partition-group-by [pred coll]
