@@ -48,55 +48,6 @@
     (second fact-form)
     (str fact-form)))
 
-(s/defn forms->steps :- [step] [forms :- [expression]]
-  (letfn [(form-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (classify    [form] (if (form-check? form) [:check form (fact-desc form)] [:transition form (str form)]))]
-    (map classify forms)))
-
-(declare execute-steps)
-
-(defn time-run [run-function]
-  (let [start    (. System (nanoTime))
-        ret     (run-function)
-        elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
-     [elapsed ret]))
-
-(defn retry? [elapsed-millis]
-  (<= elapsed-millis *probe-timeout*))
-
-(defn probe
-  ([f] (probe f 0))
-  ([f elapsed-so-far]
-   (let [[time [test-passed? output]] (m-state/with-isolated-output-counters (time-run f))
-         elapsed                      (+ elapsed-so-far time)]
-     (cond test-passed?
-           (do (m-emission/pass)
-               (emit-debug-ln "test passed")
-               [true output])
-
-           (retry? elapsed)
-           (do (Thread/sleep *probe-sleep-period*)
-               (emit-debug "x")
-               (probe f elapsed))
-
-           :else
-           (do
-             (emit-debug "\n")
-             (f))))))
-
-
-(defn gen-transition [world expr name rest]
-  `(try
-     (let [next-world# (vis/with-split-cid
-                         (do
-                           (emit-debug-ln (str "running " ~name))
-                           (save-world-debug ~name (~expr ~world))))]
-       (execute-steps next-world# ~rest))
-     (catch Throwable throwable#
-       (set! *e throwable#)                                 ; letting repl know of the exception
-       (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
-       )))
-
 (defn check->fn-expr [check-expr]
   `(fn [world#]
      (let [writer# (new StringWriter)]
@@ -109,7 +60,6 @@
                           world#)]
            [success# (str writer#)])))))
 
-; try-catch
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try [(~transition-expr world#) ""]
