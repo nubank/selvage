@@ -84,32 +84,33 @@
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
 
-(m-emission/silently
-  (def fact-when-step-succeeds
-    (fact "this will succeed"
-          (flow step1 (fact "passes" 1 => 1) step2) => truthy))
+(binding [f/*probe-timeout* 10]
+  (m-emission/silently
+   (def fact-when-step-succeeds
+     (fact "this will succeed"
+           (flow step1 (fact "passes" 1 => 1) step2) => truthy))
 
-  (def fact-when-step-fails
-    (fact "this will fail because a check fails (failure output is normal)"
-          (flow step1 (fact "fails" 1 => 2) step2) => truthy))
+   (def fact-when-step-fails
+     (fact "this will fail because a check fails (failure output is normal)"
+           (flow step1 (fact "fails" 1 => 2) step2) => truthy))
 
-  (def last-called (atom 0))
-  (def stops-at-failure
-    (fact "flow doesn't execute steps post failure"
-          (flow (world-fn (reset! last-called 1))
-                (fact "nope" 1 => 2)
-                (world-fn (reset! last-called 2))) => truthy))
+   (def last-called (atom 0))
+   (def stops-at-failure
+     (fact "flow doesn't execute steps post failure"
+           (flow (world-fn (reset! last-called 1))
+                 (fact "nope" 1 => 2)
+                 (world-fn (reset! last-called 2))) => truthy))
 
-  (def step-throwing-exception-is-a-failure
-    (fact "step throwing exception is also a test failure"
-          (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
-          => truthy)))
+   (def step-throwing-exception-is-a-failure
+     (fact "step throwing exception is also a test failure"
+           (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
+           => truthy))))
 
 (facts "checking for success and failure"
-       fact-when-step-succeeds => truthy
-       fact-when-step-fails => falsey
-       @last-called => 1
-       step-throwing-exception-is-a-failure => falsey)
+  fact-when-step-succeeds => truthy
+  fact-when-step-fails => falsey
+  @last-called => 1
+  step-throwing-exception-is-a-failure => falsey)
 
 (facts "checks are retried"
   (let [counter (atom -1)]
@@ -122,38 +123,41 @@
      fails-first-run-then-succeeds => truthy)))
 
 
-(let [query-count (atom 0)]
-  (fact "query steps preceeding checks are also retried"
-        (def succeeds-on-third-step-execution
-          (fact "test"
-                (flow (f/fnq [w]
-                        {:x (swap! query-count inc)})
-                      (fact *world* => (embeds {:x 3}))) => truthy)))
+(binding [f/*probe-timeout* 10
+          f/*probe-sleep-period* 1]
+  (let [query-count (atom 0)]
+   (fact "query steps preceeding checks are also retried"
+         (def succeeds-on-third-step-execution
+           (fact "test"
+                 (flow (f/fnq [w]
+                              {:x (swap! query-count inc)})
+                       (fact *world* => (embeds {:x 3}))) => truthy)))
 
-      (fact "retries one step preceeding a check until the check passes"
-            succeeds-on-third-step-execution => truthy))
+   (fact "retries one step preceeding a check until the check passes"
+         succeeds-on-third-step-execution => truthy)))
 
+(binding [f/*probe-timeout* 10
+          f/*probe-sleep-period* 1]
+  (facts "on the impact on a test run:"
+    (fact "when a test passes, midje records no failures"
+          (m-emission/silently
+            (flow (fact true => truthy)) => truthy
+            (m-state/output-counters))
+          => (embeds {:midje-failures 0
+                      :midje-passes   1}))
 
-(facts "on the impact on a test run:"
-       (fact "when a test passes, midje records no failures"
-             (m-emission/silently
-               (flow (fact true => truthy)) => truthy
-               (m-state/output-counters))
-             => (embeds {:midje-failures 0
-                         :midje-passes   1}))
+    (fact "when a probe times out and fails, midje records that failure"
+          (m-emission/silently
+            (flow (fact false => truthy)) => falsey
+            (m-state/output-counters))
+          => (embeds {:midje-failures 1}))
 
-       (fact "when a probe times out and fails, midje records that failure"
-             (m-emission/silently
-               (flow (fact false => truthy)) => falsey
-               (m-state/output-counters))
-             => (embeds {:midje-failures 1}))
-
-       (def counter2 (atom -2))
-       (fact "when a test passes after a few tries, midje still records no failures"
-             (m-emission/silently
-               (flow (fact (swap! counter2 inc) => pos?)) => truthy
-               (m-state/output-counters))
-             => (embeds {:midje-failures 0})))
+    (def counter2 (atom -2))
+    (fact "when a test passes after a few tries, midje still records no failures"
+          (m-emission/silently
+            (flow (fact (swap! counter2 inc) => pos?)) => truthy
+            (m-state/output-counters))
+          => (embeds {:midje-failures 0}))))
 
 (facts "it logs ns and line number on flow"
        (fact "when a test description is given"
