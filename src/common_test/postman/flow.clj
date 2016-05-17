@@ -84,15 +84,6 @@
              (emit-debug "\n")
              (f))))))
 
-(defn gen-test-probe [world expr rest]
-  `(when (vis/with-split-cid
-           (let [[ok-or-fail# output#] (do
-                                         (emit-debug-ln "probing assertion...")
-                                         (probe (partial (check->fn '~expr) ~world)))]
-             (when-not ok-or-fail#
-               (emit-ln "Test failed with output:\n" output# "\n"))
-             ok-or-fail#))
-     (execute-steps ~world ~rest)))
 
 (defn gen-transition [world expr name rest]
   `(try
@@ -105,34 +96,6 @@
        (set! *e throwable#)                                 ; letting repl know of the exception
        (fact (throw throwable#) => (str "Step '" ~name "' to not throw an exception")) ; making the exception a test failure
        )))
-
-(defmacro execute-steps [world [step & rest]]
-  (if step
-    (let [[kind expr name] step]
-      (condp = kind
-        :check (gen-test-probe world expr rest)
-        :transition (gen-transition world expr name rest)))
-    world))
-
-(defn forms->flow [flow-name forms]
-  (let [steps (forms->steps forms)]
-    `(s/with-fn-validation
-       (vis/with-split-cid "FLOW"
-                           (facts :postman ~flow-name
-                                 (do
-                                   (emit-debug-ln (str "Running flow: " ~flow-name))
-                                   (emit-debug-ln "Flow finished" (if (execute-steps {} ~steps)
-                                                                    "succesfully"
-                                                                    "with failures"))
-                                   (emit-debug "\n")))))))
-
-(defmacro flow-old [& forms]
-  (let [flow-name (str (ns-name *ns*)
-                       ":"
-                       (:line (meta &form)))]
-       (if (string? (first forms))
-         (forms->flow (str flow-name " " (first forms)) (rest forms))
-         (forms->flow flow-name forms))))
 
 (defn check->fn-expr [check-expr]
   `(fn [world#]
@@ -211,10 +174,7 @@
     (->> forms (map classify) retry-sequences seq)))
 
 (defn run-steps [steps]
-  (->> steps
-       ;(map vector)
-       ;(map steps-to-step)
-       (run-step-sequence [{} ""])))
+  (run-step-sequence [{} ""] steps))
 
 (defn format-result [flow-description [success? desc]]
   (do
@@ -242,3 +202,9 @@
                         `(->> (list ~@(forms->steps-exprs in-forms))
                               run-steps
                               (format-result ~flow-description)))))
+
+(defmacro fnq [& forms]
+  `^::query (fn ~@forms))
+
+(defmacro defnq [name & forms]
+  `(def ~name ^::query (fn ~@forms)))

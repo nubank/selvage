@@ -1,7 +1,7 @@
 (ns common-test.postman.flow-test
   (:require [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
-            [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
+            [common-test.postman.flow :as f :refer [flow *world*]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (clojure.lang Atom)
@@ -121,21 +121,14 @@
    (facts "every check is retried until it passes"
      fails-first-run-then-succeeds => truthy)))
 
-(defmacro fnq [& forms]
-  `^::f/query (fn ~@forms))
-
-(defmacro defnq [name & forms]
-  `(def ~name ^::f/query (fn ~@forms)))
 
 (let [query-count (atom 0)]
   (fact "query steps preceeding checks are also retried"
         (def succeeds-on-third-step-execution
           (fact "test"
-                (flow (fnq [w]
+                (flow (f/fnq [w]
                         {:x (swap! query-count inc)})
-                      (fact *world* => (embeds {:x 3}))) => truthy
-                #_(provided
-                    (query-step-1 anything) =streams=> [{:x 1} {:x 2} {:x 3}]))))
+                      (fact *world* => (embeds {:x 3}))) => truthy)))
 
       (fact "retries one step preceeding a check until the check passes"
             succeeds-on-third-step-execution => truthy))
@@ -183,67 +176,3 @@
           (common-core.visibility/with-split-cid "FLOW"
                                                  (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"
                                                    )))))
-
-
-
-(comment
-  (binding [f/*verbose* true]
-    (fact "when a test description is given"
-         (f/flow-old "test flow log" (fact 1 => 1)) => irrelevant
-         #_(provided
-             (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log") => irrelevant
-             (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
-
-  (def thunk
-    (fn [world]
-      (let [writer (new StringWriter)]
-        (binding [f/*world* world
-                  clojure.test/*test-out* writer]
-          (let [res (fact true => falsey)]
-            [res (str writer)])))))
-
-  (defn run-steps [steps]
-    (letfn [(run-step [[world _] [step-type f desc]]
-              (let [[next-world desc] (f world)]
-                (if next-world
-                  [next-world desc]
-                  (reduced [next-world desc])))
-              )]
-      (reduce run-step [{} ""] steps)))
-
-    (defn format-result [[success? desc]]
-      (if success?
-        (println "Flow completed successfully")
-        (println "Flow failed:\n" desc)))
-
-  (defn format-result2 [x]
-    #nu/tapd x)
-
-  (defmacro flow2 [& forms]
-    `(->> ~(f/forms->steps-exprs forms)
-          run-steps
-          format-result))
-
-  (->> (to-steps step1) run-steps)
-
-  (do
-    (flow2 step1 step2)
-
-    (flow2 (fact true => truthy))
-
-    (flow2 (fact true => falsey)))
-
-  (->> (to-steps
-         step1
-         (fact *world* => {:1 1})
-         step2)
-       (map (fn [[type f desc]] (apply f [{:w :W}]))))
-
-
-  (-> (f/forms->steps `(step1))
-      first
-      second
-      (apply [{}])
-      )
-
-  )
