@@ -128,15 +128,26 @@
       (m-state/set-output-counters! output-counters-before)
       (apply f args))))
 
+(defn timed-apply [run-function & args]
+  (let [start   (. System (nanoTime))
+        ret     (apply run-function args)
+        elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
+    [elapsed ret]))
+
+(defn retry? [elapsed-millis]
+  (<= elapsed-millis *probe-timeout*))
+
 (defn retry [f]
-  (letfn [(retry-f [retries f w]
-            (let [[success? _ :as res] (f w)]
+  (letfn [(retry-f [elapsed-so-far f w]
+            (let [[time [success? _ :as res]] (timed-apply f w)
+                  elapsed (+ elapsed-so-far time)]
               (if success?
                 res
-                (if (< retries max-retries)
+                (if (retry? elapsed)
                   (do
+                    (emit-debug "x")
                     (Thread/sleep *probe-sleep-period*)
-                    (retry-f (inc retries) f w))
+                    (retry-f (+ elapsed *probe-sleep-period*) f w)) ;TODO: improve time accounting
                   [false "timed out"]))))]
     (partial retry-f 0 (resetting-midje-counters f))))
 
