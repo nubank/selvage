@@ -1,7 +1,7 @@
 (ns common-test.postman.flow-test
   (:require [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
-            [common-test.postman.flow :as f :refer [flow *world* forms->flow]]
+            [common-test.postman.flow :as f :refer [flow tabular-flow *world* forms->flow]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
   (:import (clojure.lang Atom)))
@@ -163,3 +163,15 @@
                                                                   (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:158 rataria"))
                                                                       (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (pointer.core/line-number-known 158)) "(fact 1 => 1 :position (pointer.core/line-number-known 158))"])) "succesfully" "with failures"))
                                                                       (common-test.postman.flow/emit-debug "\n"))))))
+
+(facts "Tabular works as expected"
+       (m-emission/silently
+         (tabular-flow
+           (flow "Simple check"
+                 (fact ?a => ?b))
+           ?a ?b
+           1 1
+           2 2
+           2 1)
+         ;; All checks are doubled, because we need to wrap the flow in a fact.
+         (m-state/output-counters)) => {:midje-failures 2, :midje-passes 4})
