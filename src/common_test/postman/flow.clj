@@ -1,6 +1,6 @@
 (ns common-test.postman.flow
   (:require [schema.core :as s]
-            [midje.sweet :refer [fact facts anything]]
+            [midje.sweet :refer [fact facts anything tabular truthy]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
@@ -133,3 +133,8 @@
        (if (string? (first forms))
          (forms->flow (str flow-name " " (first forms)) (rest forms))
          (forms->flow flow-name forms))))
+
+(defmacro tabular-flow [flow & table]
+  `(tabular
+     (fact ~flow => truthy)
+     ~@table))
