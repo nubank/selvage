@@ -123,18 +123,16 @@
      fails-first-run-then-succeeds => truthy)))
 
 
-(binding [f/*probe-timeout* 10
-          f/*probe-sleep-period* 1]
-  (let [query-count (atom 0)]
-   (fact "query steps preceeding checks are also retried"
-         (def succeeds-on-third-step-execution
-           (fact "test"
-                 (flow (f/fnq [w]
-                              {:x (swap! query-count inc)})
-                       (fact *world* => (embeds {:x 3}))) => truthy)))
+(let [query-count (atom 0)]
+  (fact "query steps preceeding checks are also retried"
+        (def succeeds-on-third-step-execution
+          (fact "test"
+                (flow (f/fnq [w]
+                             {:x (swap! query-count inc)})
+                      (fact *world* => (embeds {:x 3}))) => truthy)))
 
-   (fact "retries one step preceeding a check until the check passes"
-         succeeds-on-third-step-execution => truthy)))
+  (fact "retries one step preceeding a check until the check passes"
+        succeeds-on-third-step-execution => truthy))
 
 (binding [f/*probe-timeout* 10
           f/*probe-sleep-period* 1]
