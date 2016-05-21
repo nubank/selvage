@@ -91,7 +91,7 @@
            (flow step1 (fact "passes" 1 => 1) step2) => truthy))
 
    (def fact-when-step-fails
-     (fact "this will fail because a check fails (failure output is normal)"
+     (fact "this will fail because a check fails"
            (flow step1 (fact "fails" 1 => 2) step2) => truthy))
 
    (def last-called (atom 0))
@@ -114,25 +114,94 @@
 
 (facts "checks are retried"
   (let [counter (atom -1)]
-   (m-emission/silently
-     (def fails-first-run-then-succeeds
-       (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-             (flow (fact (swap! counter inc) => pos?)) => truthy)))
+    (def fails-first-run-then-succeeds
+      (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
+            (flow (fact (swap! counter inc) => pos?)) => truthy))
 
    (facts "every check is retried until it passes"
      fails-first-run-then-succeeds => truthy)))
 
+(facts
+  (let [query-count (atom 0)]
+    (fact "query steps preceeding checks are also retried"
+          (def succeeds-on-third-step-execution
+            (fact
+                  (flow (f/fnq [w]
+                               {:x (swap! query-count inc)})
+                        (fact *world* => (embeds {:x 3}))) => truthy))))
 
-(let [query-count (atom 0)]
-  (fact "query steps preceeding checks are also retried"
-        (def succeeds-on-third-step-execution
-          (fact "test"
-                (flow (f/fnq [w]
-                             {:x (swap! query-count inc)})
-                      (fact *world* => (embeds {:x 3}))) => truthy)))
+  (let [counts (atom {:step-1 0 :step-2 0 :step-3 0})]
+    (fact "retries several query steps preceeting a check until it passes"
+          (def preceeding-queries-succeed-on-third-step-execution
+            (fact
+                  (flow (f/fnq [w]
+                               (swap! counts update-in [:step-1] inc))
+                        (f/fnq [w]
+                               (swap! counts update-in [:step-2] inc))
+                        (f/fnq [w]
+                               (swap! counts update-in [:step-3] inc))
+                        (fact *world* => (embeds {:step-1 3 :step-2 3 :step-3 3}))) => truthy))))
 
-  (fact "retries one step preceeding a check until the check passes"
-        succeeds-on-third-step-execution => truthy))
+  (fact "retries several query steps preceeting a check until it passes"
+        (let [counts (atom {:non-query-step 0 :step-2 0 :step-3 0})]
+          (fact "positive test"
+                (def non-query-steps-are-not-retried-positive
+                  (fact
+                    (flow (fn [w]
+                            (swap! counts update-in [:non-query-step] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-2] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-3] inc))
+                          (fact *world* => (embeds {:step-2 3 :step-3 3}))) => truthy))))
+        (let [counts (atom {:non-query-step 0 :step-2 0 :step-3 0})]
+          (binding [f/*probe-timeout* 30 f/*probe-sleep-period* 1]
+            (m-emission/silently
+              (fact "negative test"
+                    (def non-query-steps-are-not-retried-negative
+                      (fact
+                        (flow (fn [w]
+                                (swap! counts update-in [:non-query-step] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-2] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-3] inc))
+                              (fact *world* => (embeds {:non-query-step 3}))) => truthy)))))))
+
+  (fact "only query steps immediately preceeding a check are retried"
+        (let [counts (atom {:not-immediately-preceeding 0 :step-2 0 :step-3 0})]
+          (fact "positive test"
+                (def only-immediately-preceeding-query-steps-are-retried-positive
+                  (fact
+                    (flow (fn [w]
+                            (swap! counts update-in [:not-immediately-preceeding] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-2] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-3] inc))
+                          (fact *world* => (embeds {:step-2 3 :step-3 3}))) => truthy))))
+        (let [counts (atom {:not-immediately-preceeding 0 :step-2 0 :step-3 0})]
+          (binding [f/*probe-timeout* 10 f/*probe-sleep-period* 1]
+            (m-emission/silently
+              (fact "negative test, inserting a regular - perhaps imperative - step in-between query steps"
+                    (def only-immediately-preceeding-query-steps-are-retried-negative
+                      (fact
+                        (flow (f/fnq [w]
+                                (swap! counts update-in [:not-immediately-preceeding] inc))
+                              step1
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-2] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-3] inc))
+                              (fact *world* => (embeds {:not-immediately-preceeding 3}))) => truthy)))))))
+
+  (facts "checks and query steps are retried"
+    succeeds-on-third-step-execution => truthy
+    preceeding-queries-succeed-on-third-step-execution => truthy
+    non-query-steps-are-not-retried-positive => truthy
+    non-query-steps-are-not-retried-negative => falsey
+    only-immediately-preceeding-query-steps-are-retried-positive => truthy
+    only-immediately-preceeding-query-steps-are-retried-negative => falsey))
 
 (binding [f/*probe-timeout* 10
           f/*probe-sleep-period* 1]
