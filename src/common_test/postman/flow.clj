@@ -33,47 +33,16 @@
 
 (defn worlds [] (deref worlds-atom))
 
-(defn check->fn [check-expr]
-  (fn [world]
-    (let [writer (new StringWriter)]
-      (binding [*world* world
-                clojure.test/*test-out* writer]
-        [(eval check-expr) (str writer)]))))
-
-(def expression s/Any)
-(def step [(s/one (s/enum :transition :check :query) 'kind) (s/one expression 'expression)])
+(def Expression s/Any)
+(def Step [(s/one (s/enum :transition :check :query) 'kind) (s/one Expression 'Expression)])
 
 (defn- fact-desc [fact-form]
   (if (string? (second fact-form))
     (second fact-form)
     (str fact-form)))
 
-(defn check->fn-expr [check-expr]
-  `(fn [world#]
-     (let [writer# (new StringWriter)]
-       (binding [*world* world#
-                 clojure.test/*test-out* writer#]
-         (let [result#  ~check-expr
-               success# (when result#
-                          world#)]
-           [success# (str writer#)])))))
-
-(defn print-exception-string [exception]
-  (let [output-baos (ByteArrayOutputStream.)]
-    (.printStackTrace exception (PrintStream. output-baos))
-    (String. (.toByteArray output-baos) "UTF-8")))
-
-(defn transition->fn-expr [transition-expr]
-  `(fn [world#]
-     (try [(~transition-expr world#) ""]
-       (catch Throwable throwable#
-         (m-state/output-counters:inc:midje-failures!)
-         [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
-
-(defn retriable? [[kind f desc]]
+(defn retriable-step? [[kind _f _desc]]
   (-> kind #{:check :query} boolean))
-
-(def max-retries 5)
 
 (defn resetting-midje-counters [f]
   (let [output-counters-before (m-state/output-counters)]
@@ -82,31 +51,10 @@
       (apply f args))))
 
 (defn timed-apply [run-function & args]
-  (let [start   (. System (nanoTime))
-        ret     (apply run-function args)
+  (let [start (. System (nanoTime))
+        ret (apply run-function args)
         elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
     [elapsed ret]))
-
-(defn retry? [elapsed-millis]
-  (<= elapsed-millis *probe-timeout*))
-
-(defn retry [f]
-  (letfn [(retry-f [elapsed-so-far f w]
-            (let [[time [success? desc :as res]] (timed-apply f w)
-                  elapsed (+ elapsed-so-far time)]
-              (if success?
-                res
-                (if (retry? elapsed)
-                  (do
-                    ;(emit-debug "x")
-                    (Thread/sleep *probe-sleep-period*)
-                    (retry-f (+ elapsed *probe-sleep-period*) f w)) ;TODO: improve time accounting
-                  [false desc]))))]
-    (partial retry-f 0 (resetting-midje-counters f))))
-
-
-(defn partition-group-by [pred coll]
-  (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
 (defn run-step [[world _] [step-type f desc]]
   (vis/with-split-cid
@@ -121,37 +69,77 @@
 (defn run-step-sequence [s0 steps]
   (reduce run-step s0 steps))
 
+(defn run-steps [steps]
+  (reset! worlds-atom {})
+  (vis/with-split-cid "FLOW"
+                      (run-step-sequence [{} ""] steps)))
+
 (defn steps-to-step [steps]
   `[:sequence (fn [w#] (run-step-sequence [w# ""] (list ~@steps))) "running multiple steps"])
 
-(defn retry-expr [[kind f-expr desc]]
+(defn retry [f]
+  (letfn [(retry? [elapsed-millis] (<= elapsed-millis *probe-timeout*))
+          (retry-f [elapsed-so-far f w]
+            (let [[time [success? desc :as res]] (timed-apply f w)
+                  elapsed (+ elapsed-so-far time)]
+              (if success?
+                res
+                (if (retry? elapsed)
+                  (do
+                    (Thread/sleep *probe-sleep-period*)
+                    (retry-f (+ elapsed *probe-sleep-period*) f w)) ; time accounting might be improved
+                  [false desc]))))]
+    (partial retry-f 0 (resetting-midje-counters f))))
+
+(defn retry-expr [[_kind f-expr desc]]
   `[:retry (fn [w#] ((retry ~f-expr) w#)) ~desc])
+
+(defn- partition-group-by [pred coll]
+  (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
 (defn retry-sequences [steps]
   (->> steps
-       ;(map (fn [step] (if (retriable? step) (list retry step) step)))
-       (partition-group-by retriable?)
+       (partition-group-by retriable-step?)
        (mapcat (fn [[retriable-seq? steps]]
                  (if retriable-seq?
                    [(retry-expr (steps-to-step steps))]
-                   steps)))
-       ))
+                   steps)))))
 
-(s/defn forms->steps-exprs :- [step] [forms :- [expression]]
+(defn check->fn-expr [check-expr]
+  `(fn [world#]
+     (let [writer# (new StringWriter)]
+       (binding [*world* world#
+                 clojure.test/*test-out* writer#]
+         (let [result# ~check-expr
+               success# (when result#
+                          world#)]
+           [success# (str writer#)])))))
+
+(defn print-exception-string [exception]
+  (let [output-baos (ByteArrayOutputStream.)]
+    (.printStackTrace exception (PrintStream. output-baos))
+    (String. (.toByteArray output-baos) "UTF-8")))
+
+(defn transition->fn-expr [transition-expr]
+  `(fn [world#]
+     (try [(~transition-expr world#) ""]
+          (catch Throwable throwable#
+            (m-state/output-counters:inc:midje-failures!)
+            [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
+
+(s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
           (is-query? [form]
             (if (symbol? form)
               (try (-> form eval meta ::query) (catch Exception _ false))
               (-> form macroexpand meta ::query)))
-          (classify  [form] (cond (is-check? form) [:check      (check->fn-expr form) (fact-desc form)]
-                                  (is-query? form) [:query      (transition->fn-expr form) (str form)]
-                                  :else            [:transition (transition->fn-expr form) (str form)]))]
+          (classify [form] (cond (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
+                                 (is-query? form) [:query (transition->fn-expr form) (str form)]
+                                 :else [:transition (transition->fn-expr form) (str form)]))]
     (->> forms (map classify) retry-sequences seq)))
 
-(defn run-steps [steps]
-  (reset! worlds-atom {})
-  (vis/with-split-cid "FLOW"
-    (run-step-sequence [{} ""] steps)))
+(defn announce-flow [flow-description]
+  (emit-debug-ln (str "Running flow: " flow-description)))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
@@ -159,8 +147,7 @@
   (emit-debug-ln "Flow " flow-description " finished"
                  (if success?
                    "succesfully"
-                   "with failures"))
-  (emit-debug "\n")
+                   "with failures") "\n")
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
@@ -168,20 +155,15 @@
      (facts :postman ~flow-name
        ~flow-expr)))
 
-(defn announce-flow [flow-description]
-  (emit-debug-ln (str "Running flow: " flow-description)))
-
 (defmacro flow [& forms]
-  (let [flow-name (str (ns-name *ns*)
-                       ":"
-                       (:line (meta &form)))
+  (let [flow-name (str (ns-name *ns*) ":" (:line (meta &form)))
         [flow-description in-forms] (if (string? (first forms))
                                       [(str flow-name " " (first forms)) (rest forms)]
                                       [flow-name forms])]
     (wrap-with-metadata flow-description
                         `(do
                            (announce-flow ~flow-description)
-                           (->> (list ~@(forms->steps-exprs in-forms))
+                           (->> (list ~@(forms->steps in-forms))
                                 run-steps
                                 (announce-results ~flow-description))))))
 
