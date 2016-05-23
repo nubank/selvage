@@ -245,10 +245,3 @@
       (embeds
         '(schema.core/with-fn-validation
            (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"))))
-
-
-
-
-
-
-

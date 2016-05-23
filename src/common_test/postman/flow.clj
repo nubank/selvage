@@ -27,7 +27,7 @@
 (defn emit-debug-ln [& strings]
   (emit-debug (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
 
-(defn save-world-debug [name world]
+(defn save-world-debug! [name world]
   (swap! worlds-atom assoc name world)
   world)
 
@@ -98,7 +98,7 @@
                 res
                 (if (retry? elapsed)
                   (do
-                    (emit-debug "x")
+                    ;(emit-debug "x")
                     (Thread/sleep *probe-sleep-period*)
                     (retry-f (+ elapsed *probe-sleep-period*) f w)) ;TODO: improve time accounting
                   [false desc]))))]
@@ -112,10 +112,11 @@
   (vis/with-split-cid
     (do
       (emit-debug-ln "Running " (format "%-10s" (name step-type)) " " desc)
-      (let [[next-world desc] (f world)]
+      (let [[next-world result-desc] (f world)]
+        (save-world-debug! desc next-world)
         (if next-world
-          [next-world desc]
-          (reduced [next-world desc]))))))
+          [next-world result-desc]
+          (reduced [next-world result-desc]))))))
 
 (defn run-step-sequence [s0 steps]
   (reduce run-step s0 steps))
@@ -148,6 +149,7 @@
     (->> forms (map classify) retry-sequences seq)))
 
 (defn run-steps [steps]
+  (reset! worlds-atom {})
   (vis/with-split-cid "FLOW"
     (run-step-sequence [{} ""] steps)))
 
