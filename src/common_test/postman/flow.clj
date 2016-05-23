@@ -89,7 +89,7 @@
 
 (defn retry [f]
   (letfn [(retry-f [elapsed-so-far f w]
-            (let [[time [success? _ :as res]] (timed-apply f w)
+            (let [[time [success? desc :as res]] (timed-apply f w)
                   elapsed (+ elapsed-so-far time)]
               (if success?
                 res
@@ -98,7 +98,7 @@
                     (emit-debug "x")
                     (Thread/sleep *probe-sleep-period*)
                     (retry-f (+ elapsed *probe-sleep-period*) f w)) ;TODO: improve time accounting
-                  [false "timed out"]))))]
+                  [false desc]))))]
     (partial retry-f 0 (resetting-midje-counters f))))
 
 
@@ -142,12 +142,13 @@
   (run-step-sequence [{} ""] steps))
 
 (defn format-result [flow-description [success? desc]]
-  (do
-    (emit-debug-ln (str "Running flow: " flow-description))
-    (emit-debug-ln "Flow finished" (if success?
-                                     "succesfully"
-                                     "with failures"))
-    (emit-debug "\n"))
+  (when-not success?
+    (emit desc))
+  (emit-debug-ln (str "Running flow: " flow-description))   ; Emit before
+  (emit-debug-ln "Flow finished" (if success?
+                                   "succesfully"
+                                   "with failures"))
+  (emit-debug "\n")
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
