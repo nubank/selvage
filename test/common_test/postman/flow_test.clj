@@ -244,6 +244,11 @@
       =>
       (embeds
         '(schema.core/with-fn-validation
-          (common-core.visibility/with-split-cid "FLOW"
-                                                 (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"
-                                                   )))))
+           (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"))))
+
+
+
+
+
+
+

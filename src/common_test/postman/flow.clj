@@ -5,7 +5,7 @@
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
             [clojure.string :as str])
-  (:import [java.io StringWriter]))
+  (:import [java.io StringWriter ByteArrayOutputStream PrintStream]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -19,13 +19,13 @@
     (apply print strings)))
 
 (defn emit-ln [& strings]
-  (emit (format "%-40s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
+  (emit (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
 
 (defn emit-debug [& strings]
   (when *verbose* (apply emit strings)))
 
 (defn emit-debug-ln [& strings]
-  (emit-debug (format "%-40s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
+  (emit-debug (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
 
 (defn save-world-debug [name world]
   (swap! worlds-atom assoc name world)
@@ -53,19 +53,22 @@
      (let [writer# (new StringWriter)]
        (binding [*world* world#
                  clojure.test/*test-out* writer#]
-         (emit-debug-ln "probing assertion...")             ;TODO: review output
          (let [result#  ~check-expr
                success# (when result#
-                          (emit-debug-ln "test passed")
                           world#)]
            [success# (str writer#)])))))
+
+(defn print-exception-string [exception]
+  (let [output-baos (ByteArrayOutputStream.)]
+    (.printStackTrace exception (PrintStream. output-baos))
+    (String. (.toByteArray output-baos) "UTF-8")))
 
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try [(~transition-expr world#) ""]
        (catch Throwable throwable#
-         (fact (throw throwable#) => (str "Step '" ~(str transition-expr) "' to not throw an exception"))
-         [false throwable#]))))
+         (m-state/output-counters:inc:midje-failures!)
+         [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
 
 (defn retriable? [[kind f desc]]
   (-> kind #{:check :query} boolean))
@@ -106,16 +109,19 @@
   (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
 (defn run-step [[world _] [step-type f desc]]
-  (let [[next-world desc] (f world)]
-    (if next-world
-      [next-world desc]
-      (reduced [next-world desc]))))
+  (vis/with-split-cid
+    (do
+      (emit-debug-ln "Running " (format "%-10s" (name step-type)) " " desc)
+      (let [[next-world desc] (f world)]
+        (if next-world
+          [next-world desc]
+          (reduced [next-world desc]))))))
 
 (defn run-step-sequence [s0 steps]
   (reduce run-step s0 steps))
 
 (defn steps-to-step [steps]
-  `[:sequence (fn [w#] (run-step-sequence [w# ""] (list ~@steps))) "multiple steps"])
+  `[:sequence (fn [w#] (run-step-sequence [w# ""] (list ~@steps))) "running multiple steps"])
 
 (defn retry-expr [[kind f-expr desc]]
   `[:retry (fn [w#] ((retry ~f-expr) w#)) ~desc])
@@ -132,30 +138,36 @@
 
 (s/defn forms->steps-exprs :- [step] [forms :- [expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (is-query? [form] (-> form macroexpand meta ::query))
+          (is-query? [form]
+            (if (symbol? form)
+              (try (-> form eval meta ::query) (catch Exception _ false))
+              (-> form macroexpand meta ::query)))
           (classify  [form] (cond (is-check? form) [:check      (check->fn-expr form) (fact-desc form)]
                                   (is-query? form) [:query      (transition->fn-expr form) (str form)]
                                   :else            [:transition (transition->fn-expr form) (str form)]))]
     (->> forms (map classify) retry-sequences seq)))
 
 (defn run-steps [steps]
-  (run-step-sequence [{} ""] steps))
+  (vis/with-split-cid "FLOW"
+    (run-step-sequence [{} ""] steps)))
 
-(defn format-result [flow-description [success? desc]]
+(defn announce-results [flow-description [success? desc]]
   (when-not success?
-    (emit desc))
-  (emit-debug-ln (str "Running flow: " flow-description))   ; Emit before
-  (emit-debug-ln "Flow finished" (if success?
-                                   "succesfully"
-                                   "with failures"))
+    (emit-ln desc))
+  (emit-debug-ln "Flow " flow-description " finished"
+                 (if success?
+                   "succesfully"
+                   "with failures"))
   (emit-debug "\n")
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
   `(s/with-fn-validation
-     (vis/with-split-cid "FLOW"
-                         (facts :postman ~flow-name
-                           ~flow-expr))))
+     (facts :postman ~flow-name
+       ~flow-expr)))
+
+(defn announce-flow [flow-description]
+  (emit-debug-ln (str "Running flow: " flow-description)))
 
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*)
@@ -165,12 +177,15 @@
                                       [(str flow-name " " (first forms)) (rest forms)]
                                       [flow-name forms])]
     (wrap-with-metadata flow-description
-                        `(->> (list ~@(forms->steps-exprs in-forms))
-                              run-steps
-                              (format-result ~flow-description)))))
+                        `(do
+                           (announce-flow ~flow-description)
+                           (->> (list ~@(forms->steps-exprs in-forms))
+                                run-steps
+                                (announce-results ~flow-description))))))
 
 (defmacro fnq [& forms]
   `^::query (fn ~@forms))
 
 (defmacro defnq [name & forms]
-  `(def ~name ^::query (fn ~@forms)))
+  `(def ~(with-meta name {::query true}) ^::query (fn ~@forms)))
+
