@@ -1,6 +1,6 @@
 (ns common-test.postman.flow
   (:require [schema.core :as s]
-            [midje.sweet :refer [fact facts anything]]
+            [midje.sweet :refer [fact facts anything tabular truthy]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
@@ -173,3 +173,7 @@
 (defmacro defnq [name & forms]
   `(def ~(with-meta name {::query true}) ^::query (fn ~@forms)))
 
+(defmacro tabular-flow [flow & table]
+  `(tabular
+     (fact ~flow => truthy)
+     ~@table))
