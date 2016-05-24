@@ -121,6 +121,13 @@
    (facts "every check is retried until it passes"
      fails-first-run-then-succeeds => truthy)))
 
+(def defnq-counts (atom {:step-1 0 :step-2 0 :step-3 0}))
+
+(f/defnq query-step-1 [w]
+       (swap! defnq-counts update-in [:step-1] inc))
+(f/defnq query-step-3 [w]
+       (swap! defnq-counts update-in [:step-3] inc))
+
 (facts
   (let [query-count (atom 0)]
     (fact "query steps preceeding checks are also retried"
@@ -195,13 +202,26 @@
                                      (swap! counts update-in [:step-3] inc))
                               (fact *world* => (embeds {:not-immediately-preceeding 3}))) => truthy)))))))
 
+  (fact "retries query steps marked via f/defnq"
+        (def retries-with-defnq
+          (fact
+            (flow query-step-1
+                  (f/fnq [w]
+                         (swap! defnq-counts update-in [:step-2] inc))
+                  query-step-3
+                  (facts
+                    (:step-1 *world*) => #(> % 3)
+                    (:step-2 *world*) => #(> % 3)
+                    (:step-3 *world*) => #(> % 3))) => truthy)))
+
   (facts "checks and query steps are retried"
     succeeds-on-third-step-execution => truthy
     preceeding-queries-succeed-on-third-step-execution => truthy
     non-query-steps-are-not-retried-positive => truthy
     non-query-steps-are-not-retried-negative => falsey
     only-immediately-preceeding-query-steps-are-retried-positive => truthy
-    only-immediately-preceeding-query-steps-are-retried-negative => falsey))
+    only-immediately-preceeding-query-steps-are-retried-negative => falsey
+    retries-with-defnq => truthy))
 
 (binding [f/*probe-timeout* 10
           f/*probe-sleep-period* 1]
