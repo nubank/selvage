@@ -1,10 +1,11 @@
 (ns common-test.postman.flow-test
   (:require [common-core.test-helpers :refer [embeds iso]]
             [midje.sweet :refer :all]
-            [common-test.postman.flow :as f :refer [flow tabular-flow *world* forms->flow]]
+            [common-test.postman.flow :as f :refer [flow tabular-flow *world*]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state])
-  (:import (clojure.lang Atom)))
+  (:import (clojure.lang Atom)
+           (java.io StringWriter)))
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -14,6 +15,8 @@
 (defn step6 [world] (assoc world :6 6))
 
 (fact "flow passes the world through transition functions"
+      (flow) => true
+
       (flow step1) => true
       (provided (step1 {}) => {:1 1})
 
@@ -81,65 +84,167 @@
 (defmacro world-fn [& body]
   `(fn [world#] (do ~@body) world#))
 
-(m-emission/silently
-  (def fact-when-step-succeeds
-    (fact "this will succeed"
-          (flow step1 (fact "passes" 1 => 1) step2) => truthy))
+(binding [f/*probe-timeout* 10]
+  (m-emission/silently
+   (def fact-when-step-succeeds
+     (fact "this will succeed"
+           (flow step1 (fact "passes" 1 => 1) step2) => truthy))
 
-  (def fact-when-step-fails
-    (fact "this will fail because a check fails (failure output is normal)"
-          (flow step1 (fact "fails" 1 => 2) step2) => truthy))
+   (def fact-when-step-fails
+     (fact "this will fail because a check fails"
+           (flow step1 (fact "fails" 1 => 2) step2) => truthy))
 
-  (def last-called (atom 0))
-  (def stops-at-failure
-    (fact "flow doesn't execute steps post failure"
-          (flow (world-fn (reset! last-called 1))
-                (fact "nope" 1 => 2)
-                (world-fn (reset! last-called 2))) => truthy))
+   (def last-called (atom 0))
+   (def stops-at-failure
+     (fact "flow doesn't execute steps post failure"
+           (flow (world-fn (reset! last-called 1))
+                 (fact "nope" 1 => 2)
+                 (world-fn (reset! last-called 2))) => truthy))
 
-  (def step-throwing-exception-is-a-failure
-    (fact "step throwing exception is also a test failure"
-          (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
-          => truthy)))
+   (def step-throwing-exception-is-a-failure
+     (fact "step throwing exception is also a test failure"
+           (flow (fn [_] (throw (ex-info "expected exception" {:a "a"}))))
+           => truthy))))
 
 (facts "checking for success and failure"
-       fact-when-step-succeeds => truthy
-       fact-when-step-fails => falsey
-       @last-called => 1
-       step-throwing-exception-is-a-failure => falsey)
+  fact-when-step-succeeds => truthy
+  fact-when-step-fails => falsey
+  @last-called => 1
+  step-throwing-exception-is-a-failure => falsey)
 
-(do
-  (def counter (atom -1))
-  (m-emission/silently
+(facts "checks are retried"
+  (let [counter (atom -1)]
     (def fails-first-run-then-succeeds
       (fact "this will succeed by retrying the fact (which increments the atom until it's pos?)"
-            (flow (fact (swap! counter inc) => pos?)) => truthy)))
+            (flow (fact (swap! counter inc) => pos?)) => truthy))
 
-  (facts "every check is retried until it passes"
-         fails-first-run-then-succeeds => truthy))
+   (facts "every check is retried until it passes"
+     fails-first-run-then-succeeds => truthy)))
 
+(def defnq-counts (atom {:step-1 0 :step-2 0 :step-3 0}))
 
-(facts "on the impact on a test run:"
-       (fact "when a test passes, midje records no failures"
-             (m-emission/silently
-               (flow (fact true => truthy)) => truthy
-               (m-state/output-counters))
-             => (embeds {:midje-failures 0
-                         :midje-passes   1}))
+(f/defnq query-step-1 [w]
+       (swap! defnq-counts update-in [:step-1] inc))
+(f/defnq query-step-3 [w]
+       (swap! defnq-counts update-in [:step-3] inc))
 
-       (fact "when a probe times out and fails, midje records that failure"
-             (m-emission/silently
-               (flow (fact false => truthy)) => falsey
-               (m-state/output-counters))
-             => (embeds {:midje-failures 1}))
+(facts
+  (let [query-count (atom 0)]
+    (fact "query steps preceeding checks are also retried"
+          (def succeeds-on-third-step-execution
+            (fact
+                  (flow (f/fnq [w]
+                               {:x (swap! query-count inc)})
+                        (fact *world* => (embeds {:x 3}))) => truthy))))
 
-       (def counter2 (atom -2))
-       (fact "when a test passes after a few tries, midje still records no failures"
-             (m-emission/silently
-               (flow (fact (swap! counter inc) => pos?)) => truthy
-               (m-state/output-counters))
-             => (embeds {:midje-failures 0})))
+  (let [counts (atom {:step-1 0 :step-2 0 :step-3 0})]
+    (fact "retries several query steps preceeting a check until it passes"
+          (def preceeding-queries-succeed-on-third-step-execution
+            (fact
+                  (flow (f/fnq [w]
+                               (swap! counts update-in [:step-1] inc))
+                        (f/fnq [w]
+                               (swap! counts update-in [:step-2] inc))
+                        (f/fnq [w]
+                               (swap! counts update-in [:step-3] inc))
+                        (fact *world* => (embeds {:step-1 3 :step-2 3 :step-3 3}))) => truthy))))
 
+  (fact "retries several query steps preceeting a check until it passes"
+        (let [counts (atom {:non-query-step 0 :step-2 0 :step-3 0})]
+          (fact "positive test"
+                (def non-query-steps-are-not-retried-positive
+                  (fact
+                    (flow (fn [w]
+                            (swap! counts update-in [:non-query-step] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-2] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-3] inc))
+                          (fact *world* => (embeds {:step-2 3 :step-3 3}))) => truthy))))
+        (let [counts (atom {:non-query-step 0 :step-2 0 :step-3 0})]
+          (binding [f/*probe-timeout* 30 f/*probe-sleep-period* 1]
+            (m-emission/silently
+              (fact "negative test"
+                    (def non-query-steps-are-not-retried-negative
+                      (fact
+                        (flow (fn [w]
+                                (swap! counts update-in [:non-query-step] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-2] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-3] inc))
+                              (fact *world* => (embeds {:non-query-step 3}))) => truthy)))))))
+
+  (fact "only query steps immediately preceeding a check are retried"
+        (let [counts (atom {:not-immediately-preceeding 0 :step-2 0 :step-3 0})]
+          (fact "positive test"
+                (def only-immediately-preceeding-query-steps-are-retried-positive
+                  (fact
+                    (flow (fn [w]
+                            (swap! counts update-in [:not-immediately-preceeding] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-2] inc))
+                          (f/fnq [w]
+                                 (swap! counts update-in [:step-3] inc))
+                          (fact *world* => (embeds {:step-2 3 :step-3 3}))) => truthy))))
+        (let [counts (atom {:not-immediately-preceeding 0 :step-2 0 :step-3 0})]
+          (binding [f/*probe-timeout* 10 f/*probe-sleep-period* 1]
+            (m-emission/silently
+              (fact "negative test, inserting a regular - perhaps imperative - step in-between query steps"
+                    (def only-immediately-preceeding-query-steps-are-retried-negative
+                      (fact
+                        (flow (f/fnq [w]
+                                (swap! counts update-in [:not-immediately-preceeding] inc))
+                              step1
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-2] inc))
+                              (f/fnq [w]
+                                     (swap! counts update-in [:step-3] inc))
+                              (fact *world* => (embeds {:not-immediately-preceeding 3}))) => truthy)))))))
+
+  (fact "retries query steps marked via f/defnq"
+        (def retries-with-defnq
+          (fact
+            (flow query-step-1
+                  (f/fnq [w]
+                         (swap! defnq-counts update-in [:step-2] inc))
+                  query-step-3
+                  (facts
+                    (:step-1 *world*) => #(> % 3)
+                    (:step-2 *world*) => #(> % 3)
+                    (:step-3 *world*) => #(> % 3))) => truthy)))
+
+  (facts "checks and query steps are retried"
+    succeeds-on-third-step-execution => truthy
+    preceeding-queries-succeed-on-third-step-execution => truthy
+    non-query-steps-are-not-retried-positive => truthy
+    non-query-steps-are-not-retried-negative => falsey
+    only-immediately-preceeding-query-steps-are-retried-positive => truthy
+    only-immediately-preceeding-query-steps-are-retried-negative => falsey
+    retries-with-defnq => truthy))
+
+(binding [f/*probe-timeout* 10
+          f/*probe-sleep-period* 1]
+  (facts "on the impact on a test run:"
+    (fact "when a test passes, midje records no failures"
+          (m-emission/silently
+            (flow (fact true => truthy)) => truthy
+            (m-state/output-counters))
+          => (embeds {:midje-failures 0
+                      :midje-passes   1}))
+
+    (fact "when a probe times out and fails, midje records that failure"
+          (m-emission/silently
+            (flow (fact false => truthy)) => falsey
+            (m-state/output-counters))
+          => (embeds {:midje-failures 1}))
+
+    (def counter2 (atom -2))
+    (fact "when a test passes after a few tries, midje still records no failures"
+          (m-emission/silently
+            (flow (fact (swap! counter2 inc) => pos?)) => truthy
+            (m-state/output-counters))
+          => (embeds {:midje-failures 0}))))
 
 (facts "it logs ns and line number on flow"
        (fact "when a test description is given"
@@ -155,14 +260,12 @@
                (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
-      (flow "rataria" (fact 1 => 1))
-      =expands-to=>
-      (schema.core/with-fn-validation
-        (common-core.visibility/with-split-cid "FLOW"
-                                               (midje.sweet/facts :postman "common-test.postman.flow-test:158 rataria"
-                                                                  (do (common-test.postman.flow/emit-debug-ln (clojure.core/str "Running flow: " "common-test.postman.flow-test:158 rataria"))
-                                                                      (common-test.postman.flow/emit-debug-ln "Flow finished" (if (common-test.postman.flow/execute-steps {} ([:check (fact 1 => 1 :position (pointer.core/line-number-known 158)) "(fact 1 => 1 :position (pointer.core/line-number-known 158))"])) "succesfully" "with failures"))
-                                                                      (common-test.postman.flow/emit-debug "\n"))))))
+      (macroexpand-1 '(flow "rataria" (fact 1 => 1)))
+      =>
+      (embeds
+        '(schema.core/with-fn-validation
+           (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"))))
+
 
 (facts "Tabular works as expected"
        (m-emission/silently
