@@ -51,9 +51,9 @@
       (apply f args))))
 
 (defn timed-apply [run-function & args]
-  (let [start (. System (nanoTime))
+  (let [start (System/nanoTime)
         ret (apply run-function args)
-        elapsed (/ (double (- (. System (nanoTime)) start)) 1000000.0)]
+        elapsed (/ (double (- (System/nanoTime) start)) 1000000.0)]
     [elapsed ret]))
 
 (defn run-step [[world _] [step-type f desc]]
