@@ -16,7 +16,8 @@
 
 (defn emit [& strings]
   (when (m-emission/config-above? :print-nothing)
-    (apply print strings)))
+    (apply print strings)
+    (flush)))
 
 (defn emit-ln [& strings]
   (emit (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
