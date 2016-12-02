@@ -73,8 +73,7 @@
 
 (defn run-steps [steps]
   (reset! worlds-atom {})
-  (vis/with-split-cid "FLOW"
-                      (run-step-sequence [{} ""] steps)))
+  (run-step-sequence [{} ""] steps))
 
 (defn steps-to-step [steps]
   `[:sequence (fn [w#] (run-step-sequence [w# ""] (list ~@steps))) "running multiple steps"])
