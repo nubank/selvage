@@ -1,6 +1,7 @@
 (ns common-test.postman.flow
   (:require [schema.core :as s]
             [midje.sweet :refer [fact facts anything tabular truthy]]
+            [midje.repl :refer [last-fact-checked]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
@@ -156,13 +157,24 @@
      (facts :postman ~flow-name
        ~flow-expr)))
 
+(defn update-metadata-w-cid! []
+  (-> (last-fact-checked)
+      (vary-meta assoc :flow/cid vis/*cid*)
+      (midje.data.compendium/record-fact-check!))) ;; HACK: re-record fact so the meta with CID is saved
+
+(defmacro with-cid [& body]
+  `(vis/with-split-cid "FLOW"
+                       (let [result# (do ~@body)]
+                         (update-metadata-w-cid!)
+                         result#)))
+
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*) ":" (:line (meta &form)))
         [flow-description in-forms] (if (string? (first forms))
                                       [(str flow-name " " (first forms)) (rest forms)]
                                       [flow-name forms])]
     (wrap-with-metadata flow-description
-                        `(do
+                        `(with-cid
                            (announce-flow ~flow-description)
                            (->> (list ~@(forms->steps in-forms))
                                 run-steps
