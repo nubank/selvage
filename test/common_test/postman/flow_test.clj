@@ -1,9 +1,11 @@
 (ns common-test.postman.flow-test
-  (:require [common-core.test-helpers :refer [embeds iso]]
-            [midje.sweet :refer :all]
+  (:require [common-core.misc :as misc]
             [common-test.postman.flow :as f :refer [flow tabular-flow *world*]]
+            [common-core.test-helpers :refer [embeds iso]]
             [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state])
+            [midje.emission.state :as m-state]
+            [midje.repl :refer [last-fact-checked]]
+            [midje.sweet :refer :all])
   (:import (clojure.lang Atom)
            (java.io StringWriter)))
 
@@ -27,6 +29,14 @@
       (flow "world goes through" step1 step2) => true
       (provided (step1 {}) => {:1 1}
                 (step2 {:1 1}) => {:1 1 :2 2}))
+
+(fact "flow has the CID used"
+      (with-redefs [misc/random-string (constantly "A-CID")]
+        (flow (fact "test" (+ 1 1) => 2))) => true
+
+      (fact "flow meta contains the CID"
+            (meta (last-fact-checked)) => (embeds {:postman  true
+                                                   :flow/cid "FLOW.A-CID"})))
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
