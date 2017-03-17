@@ -121,21 +121,21 @@
     (.printStackTrace exception (PrintStream. output-baos))
     (String. (.toByteArray output-baos) "UTF-8")))
 
-(defn fail [& failure-messages]
+(defn fail [expr-str & failure-messages]
   (m-state/output-counters:inc:midje-failures!)
-  [false (apply str failure-messages)])
+  [false (apply str "Step '" expr-str "' " failure-messages)])
 
-(defn valid-world-result [world]
+(defn valid-world-result [world expr-str]
   (if (map? world)
     [world ""]
-    (fail "did not result in a valid world:\n'" world "'")))
+    (fail expr-str "did not result in a valid world:\n'" world "'")))
 
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try
-       (valid-world-result (~transition-expr world#))
+       (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
-         (fail "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))))))
+         (fail ~(str transition-expr) "threw exception:\n" (print-exception-string throwable#))))))
 
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
