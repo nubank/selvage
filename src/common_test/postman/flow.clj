@@ -133,7 +133,6 @@
            (m-state/output-counters:inc:midje-failures!)
            [false (str "Step '" ~(str transition-expr) "' " error-message#)])))))
 
-
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
           (is-query? [form]

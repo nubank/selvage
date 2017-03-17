@@ -88,7 +88,6 @@
         (step1 anything) => {}
         (step2 anything) => irrelevant :times 0))
 
-
 (fact "flow should fail if 'transition' step doesn't return a valid world"
       (m-emission/silently
         (flow step1
