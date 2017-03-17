@@ -88,6 +88,17 @@
         (step1 anything) => {}
         (step2 anything) => irrelevant :times 0))
 
+
+(fact "flow should fail if 'transition' step doesn't return a valid world"
+      (m-emission/silently
+        (flow step1
+              (fn [_] :not-a-valid-world)
+              step2))
+      => falsey
+      (provided
+        (step1 anything) => {}
+        (step2 anything) => irrelevant :times 0))
+
 (fact "flow accepts a string as the first form"
       (flow "2 + 2 = 4" (fact (+ 2 2) => 4)) => truthy)
 

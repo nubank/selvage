@@ -123,10 +123,16 @@
 
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
-     (try [(~transition-expr world#) ""]
-          (catch Throwable throwable#
-            (m-state/output-counters:inc:midje-failures!)
-            [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
+     (let [transition-result# (try (~transition-expr world#)
+                                   (catch Throwable throwable# throwable#))]
+       (if (map? transition-result#)
+         [transition-result# ""]
+         (let [error-message# (if (instance? Throwable transition-result#)
+                                (str "threw exception:\n" (print-exception-string transition-result#))
+                                (str "did not result in a valid world:\n'" transition-result# "'"))]
+           (m-state/output-counters:inc:midje-failures!)
+           [false (str "Step '" ~(str transition-expr) "' " error-message#)])))))
+
 
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
