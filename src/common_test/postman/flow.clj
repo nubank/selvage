@@ -128,7 +128,7 @@
 (defn valid-world-result [world expr-str]
   (if (map? world)
     [world ""]
-    (fail expr-str "did not result in a valid world:\n'" world "'")))
+    (fail expr-str "did not result in a map (i.e. a valid world):\n'" world "'")))
 
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
