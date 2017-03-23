@@ -5,8 +5,9 @@
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
-            [midje.sweet :refer :all])
-  (:import (clojure.lang Atom)
+            [midje.sweet :refer :all]
+            [clojure.walk :as walk])
+  (:import (clojure.lang Atom IPersistentList)
            (java.io StringWriter)))
 
 (defn step1 [world] (assoc world :1 1))
@@ -138,6 +139,13 @@
 (f/defnq query-step-3 [w]
        (swap! defnq-counts update-in [:step-3] inc))
 
+(f/defnq factory-for-queries [key]
+  (fn [world]
+    (let [calls (swap! (:calls world) inc)]
+      (if (> calls 2)
+        (assoc world key ::finally-ok)
+        world))))
+
 (facts
   (let [query-count (atom 0)]
     (fact "query steps preceeding checks are also retried"
@@ -224,6 +232,17 @@
                     (:step-2 *world*) => #(> % 3)
                     (:step-3 *world*) => #(> % 3))) => truthy)))
 
+  (fact "retries queries returned by factory functions"
+        (def retries-factory-queries
+          (fact
+            (flow
+             (fn [_] {:calls (atom 0)})
+
+             (factory-for-queries :foo)
+
+             (fact "fnq was retried 2 times until this test passed"
+                   *world* => (embeds {:foo ::finally-ok}))) => truthy)))
+
   (facts "checks and query steps are retried"
     succeeds-on-third-step-execution => truthy
     preceeding-queries-succeed-on-third-step-execution => truthy
@@ -231,7 +250,8 @@
     non-query-steps-are-not-retried-negative => falsey
     only-immediately-preceeding-query-steps-are-retried-positive => truthy
     only-immediately-preceeding-query-steps-are-retried-negative => falsey
-    retries-with-defnq => truthy))
+    retries-with-defnq => truthy
+    retries-factory-queries => truthy))
 
 (binding [f/*probe-timeout* 10
           f/*probe-sleep-period* 1]
@@ -275,7 +295,6 @@
       (embeds
         '(schema.core/with-fn-validation
            (midje.sweet/facts :postman #"common-test.postman.flow-test:[0-9]+ rataria"))))
-
 
 (facts "Tabular works as expected"
        (m-emission/silently

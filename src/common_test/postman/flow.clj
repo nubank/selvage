@@ -6,7 +6,8 @@
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
             [clojure.string :as str])
-  (:import [java.io StringWriter ByteArrayOutputStream PrintStream]))
+  (:import [java.io StringWriter ByteArrayOutputStream PrintStream]
+           [clojure.lang Symbol PersistentList IPersistentList ISeq]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -128,12 +129,17 @@
             (m-state/output-counters:inc:midje-failures!)
             [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
 
+(defmulti form->var class)
+
+(defmethod form->var Symbol [s]
+  (resolve s))
+
+(defmethod form->var ISeq [l]
+  (if (symbol? (first l)) (form->var (first l)) nil))
+
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (is-query? [form]
-            (if (symbol? form)
-              (try (-> form eval meta ::query) (catch Exception _ false))
-              (-> form macroexpand meta ::query)))
+          (is-query? [form] (-> form form->var meta ::query))
           (classify [form] (cond (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
                                  (is-query? form) [:query (transition->fn-expr form) (str form)]
                                  :else [:transition (transition->fn-expr form) (str form)]))]
@@ -179,11 +185,11 @@
                                 run-steps
                                 (announce-results ~flow-description))))))
 
-(defmacro fnq [& forms]
-  `^::query (fn ~@forms))
+(defmacro ^::query fnq [& forms]
+  `(fn ~@forms))
 
 (defmacro defnq [name & forms]
-  `(def ~(with-meta name {::query true}) ^::query (fn ~@forms)))
+  `(def ~(with-meta name {::query true}) (fn ~@forms)))
 
 (defmacro tabular-flow [flow & table]
   `(tabular
