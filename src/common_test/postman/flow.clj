@@ -5,8 +5,7 @@
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [common-core.visibility :as vis]
-            [clojure.string :as str]
-            [clojure.walk :as walk])
+            [clojure.string :as str])
   (:import [java.io StringWriter ByteArrayOutputStream PrintStream]
            [clojure.lang Symbol PersistentList IPersistentList ISeq]))
 
@@ -130,17 +129,17 @@
             (m-state/output-counters:inc:midje-failures!)
             [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
 
-(defmulti step->var class)
+(defmulti form->var class)
 
-(defmethod step->var Symbol [s]
-  (-> s resolve))
+(defmethod form->var Symbol [s]
+  (resolve s))
 
-(defmethod step->var ISeq [l]
-  (if (symbol? (first l)) (step->var (first l)) nil))
+(defmethod form->var ISeq [l]
+  (if (symbol? (first l)) (form->var (first l)) nil))
 
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
-          (is-query? [form] (-> form step->var meta ::query))
+          (is-query? [form] (-> form form->var meta ::query))
           (classify [form] (cond (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
                                  (is-query? form) [:query (transition->fn-expr form) (str form)]
                                  :else [:transition (transition->fn-expr form) (str form)]))]

@@ -6,7 +6,6 @@
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
             [midje.sweet :refer :all]
-            [common-core.test-helpers :as th]
             [clojure.walk :as walk])
   (:import (clojure.lang Atom IPersistentList)
            (java.io StringWriter)))
@@ -140,13 +139,12 @@
 (f/defnq query-step-3 [w]
        (swap! defnq-counts update-in [:step-3] inc))
 
-(f/defnq factory-for-fnqs [key]
+(f/defnq factory-for-queries [key]
   (fn [world]
     (let [calls (swap! (:calls world) inc)]
       (if (> calls 2)
         (assoc world key ::finally-ok)
         world))))
-
 
 (facts
   (let [query-count (atom 0)]
@@ -240,7 +238,7 @@
             (flow
              (fn [_] {:calls (atom 0)})
 
-             (factory-for-fnqs :foo)
+             (factory-for-queries :foo)
 
              (fact "fnq was retried 2 times until this test passed"
                    *world* => (embeds {:foo ::finally-ok}))) => truthy)))
@@ -290,7 +288,6 @@
              (provided
                (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+") => irrelevant
                (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
-
 
 (fact "wrap flow forms inside fact with metadata"
       (macroexpand-1 '(flow "rataria" (fact 1 => 1)))
