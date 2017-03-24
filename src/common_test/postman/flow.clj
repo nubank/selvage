@@ -144,7 +144,13 @@
   (resolve s))
 
 (defmethod form->var ISeq [l]
-  (if (symbol? (first l)) (form->var (first l)) nil))
+  (let [[fst snd] l]
+    (cond
+      (#{'partial 'comp} fst) (form->var snd)
+      :else (form->var fst))))
+
+(defmethod form->var :default [_]
+  nil)
 
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
   (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
