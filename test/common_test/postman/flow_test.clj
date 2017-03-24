@@ -156,6 +156,12 @@
         (assoc world key ::finally-ok)
         world))))
 
+(f/defnq query-taking-args [key world]
+  (let [calls (swap! (:calls world) inc)]
+    (if (> calls 2)
+      (assoc world key ::finally-ok)
+      world)))
+
 (facts
   (let [query-count (atom 0)]
     (fact "query steps preceeding checks are also retried"
@@ -253,6 +259,29 @@
              (fact "fnq was retried 2 times until this test passed"
                    *world* => (embeds {:foo ::finally-ok}))) => truthy)))
 
+  (fact "retries steps built by partially applying query functions"
+        (def retries-partially-applied-queries
+          (fact
+            (flow
+              (fn [_] {:calls (atom 0)})
+
+              (partial query-taking-args :foo)
+
+              (fact "fnq was retried 2 times until this test passed"
+                    *world* => (embeds {:foo ::finally-ok}))) => truthy)))
+
+  (fact "retries steps built by composing a query function with other functions"
+        (def retries-comp-queries
+          (fact
+            (flow
+              (fn [_] {:calls (atom 0)})
+
+              (comp (partial query-taking-args :foo) identity)
+
+              (fact "fnq was retried 2 times until this test passed"
+                    *world* => (embeds {:foo ::finally-ok}))) => truthy)))
+
+
   (facts "checks and query steps are retried"
     succeeds-on-third-step-execution => truthy
     preceeding-queries-succeed-on-third-step-execution => truthy
@@ -261,7 +290,9 @@
     only-immediately-preceeding-query-steps-are-retried-positive => truthy
     only-immediately-preceeding-query-steps-are-retried-negative => falsey
     retries-with-defnq => truthy
-    retries-factory-queries => truthy))
+    retries-factory-queries => truthy
+    retries-partially-applied-queries => truthy
+    retries-comp-queries => truthy))
 
 (binding [f/*probe-timeout* 10
           f/*probe-sleep-period* 1]
