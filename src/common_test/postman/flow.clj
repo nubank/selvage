@@ -122,12 +122,21 @@
     (.printStackTrace exception (PrintStream. output-baos))
     (String. (.toByteArray output-baos) "UTF-8")))
 
+(defn fail [expr-str & failure-messages]
+  (m-state/output-counters:inc:midje-failures!)
+  [false (apply str "Step '" expr-str "' " failure-messages)])
+
+(defn valid-world-result [world expr-str]
+  (if (map? world)
+    [world ""]
+    (fail expr-str "did not result in a map (i.e. a valid world):\n'" world "'")))
+
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
-     (try [(~transition-expr world#) ""]
-          (catch Throwable throwable#
-            (m-state/output-counters:inc:midje-failures!)
-            [false (str "Step '" ~(str transition-expr) "' threw exception:\n" (print-exception-string throwable#))]))))
+     (try
+       (valid-world-result (~transition-expr world#) ~(str transition-expr))
+       (catch Throwable throwable#
+         (fail ~(str transition-expr) "threw exception:\n" (print-exception-string throwable#))))))
 
 (defmulti form->var class)
 
