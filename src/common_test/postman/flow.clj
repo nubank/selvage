@@ -4,6 +4,8 @@
             [midje.repl :refer [last-fact-checked]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
+            [io.aviso.exception :as aviso.exception]
+            [io.aviso.ansi :as aviso.ansi]
             [common-core.visibility :as vis]
             [clojure.string :as str])
   (:import [java.io StringWriter ByteArrayOutputStream PrintStream]
@@ -122,21 +124,34 @@
     (.printStackTrace exception (PrintStream. output-baos))
     (String. (.toByteArray output-baos) "UTF-8")))
 
-(defn fail [expr-str & failure-messages]
+(defn fail [expr-str details & failure-messages]
   (m-state/output-counters:inc:midje-failures!)
-  [false (apply str "Step '" expr-str "' " failure-messages)])
+  [false (apply str "\033[0;33m  Step " expr-str " " details " \033[0m " failure-messages)])
 
 (defn valid-world-result [world expr-str]
   (if (map? world)
     [world ""]
-    (fail expr-str "did not result in a map (i.e. a valid world):\n'" world "'")))
+    (fail expr-str "did not result in a map (i.e. a valid world):\n" world)))
+
+(defn- format-expr [expr]
+  (let [line-info (some-> (:line (meta expr)) (#(str " (at line: " % ")")))]
+    (str "'" expr "'" line-info)))
+
+(defn format-exception [throwable]
+  (binding [aviso.exception/*traditional* true
+            aviso.exception/*fonts*       (merge aviso.exception/*fonts*
+                                                 {:message       aviso.ansi/white-font
+                                                  :clojure-frame aviso.ansi/white-font
+                                                  :function-name aviso.ansi/white-font})]
+    (aviso.exception/format-exception throwable)))
 
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try
        (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
-         (fail ~(str transition-expr) "threw exception:\n" (print-exception-string throwable#))))))
+         (fail ~(format-expr transition-expr) "threw exception:\n"
+               (format-exception throwable#))))))
 
 (defmulti form->var class)
 
