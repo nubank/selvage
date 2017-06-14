@@ -1,11 +1,10 @@
 (ns common-test.postman.flow
   (:require [schema.core :as s]
+            [common-test.formatting :as formatting]
             [midje.sweet :refer [fact facts anything tabular truthy]]
             [midje.repl :refer [last-fact-checked]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
-            [io.aviso.exception :as aviso.exception]
-            [io.aviso.ansi :as aviso.ansi]
             [common-core.visibility :as vis]
             [clojure.string :as str])
   (:import [java.io StringWriter ByteArrayOutputStream PrintStream]
@@ -137,21 +136,13 @@
   (let [line-info (some-> (:line (meta expr)) (#(str " (at line: " % ")")))]
     (str "'" expr "'" line-info)))
 
-(defn format-exception [throwable]
-  (binding [aviso.exception/*traditional* true
-            aviso.exception/*fonts*       (merge aviso.exception/*fonts*
-                                                 {:message       aviso.ansi/white-font
-                                                  :clojure-frame aviso.ansi/white-font
-                                                  :function-name aviso.ansi/white-font})]
-    (aviso.exception/format-exception throwable)))
-
 (defn transition->fn-expr [transition-expr]
   `(fn [world#]
      (try
        (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
          (fail ~(format-expr transition-expr) "threw exception:\n"
-               (format-exception throwable#))))))
+               (formatting/format-exception throwable#))))))
 
 (defmulti form->var class)
 
