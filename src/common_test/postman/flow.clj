@@ -18,19 +18,18 @@
 
 (def worlds-atom (atom {}))
 
-(defn emit [& strings]
+(defn stdout-emit [& strings]
   (when (m-emission/config-above? :print-nothing)
     (apply print strings)
     (flush)))
 
-(defn emit-ln [& strings]
-  (emit (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
+(defn emit-ln [message log-map]
+  (vis/info :log-map log-map)
+  (stdout-emit (format "%-70s\t\t\t[CID: %s]\n" message (vis/current-cid))))
 
-(defn emit-debug [& strings]
-  (when *verbose* (apply emit strings)))
-
-(defn emit-debug-ln [& strings]
-  (emit-debug (format "%-70s\t\t\t[CID: %s]\n" (str/join " " strings) (vis/current-cid))))
+(defn emit-debug-ln [message log-map]
+  (when *verbose*
+    (emit-ln message log-map)))
 
 (defn save-world-debug! [name world]
   (swap! worlds-atom assoc name world)
@@ -64,7 +63,9 @@
 (defn run-step [[world _] [step-type f desc]]
   (vis/with-split-cid
     (do
-      (emit-debug-ln "Running " (format "%-10s" (name step-type)) " " desc)
+      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:flow-action :run-step
+                                                                                  :step        (name step-type)
+                                                                                  :desc        desc})
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
         (if next-world
@@ -138,6 +139,7 @@
     (str "'" expr "'" line-info)))
 
 (defn format-exception [throwable]
+  (vis/error :exception throwable)
   (binding [aviso.exception/*traditional* true
             aviso.exception/*fonts*       (merge aviso.exception/*fonts*
                                                  {:message       aviso.ansi/white-font
@@ -151,7 +153,7 @@
        (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
          (fail ~(format-expr transition-expr) "threw exception:\n"
-               (format-exception throwable#))))))
+                (format-exception throwable#))))))
 
 (defmulti form->var class)
 
@@ -176,15 +178,18 @@
     (->> forms (map classify) retry-sequences seq)))
 
 (defn announce-flow [flow-description]
-  (emit-debug-ln (str "Running flow: " flow-description)))
+  (emit-debug-ln (str "Running flow: " flow-description) {:flow-description flow-description
+                                                          :flow-action      :announce-flow}))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
-    (emit-ln desc))
-  (emit-debug-ln "Flow " flow-description " finished"
-                 (if success?
-                   "succesfully"
-                   "with failures") "\n")
+    (stdout-emit desc))
+  (emit-debug-ln (str "Flow " flow-description " finished"
+                   (if success?
+                     "succesfully"
+                     "with failures") "\n") {:flow-description flow-description
+                                             :flow-action      :announce-results
+                                             :success?         (boolean success?)})
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
