@@ -62,9 +62,9 @@
 (defn run-step [[world _] [step-type f desc]]
   (vis/with-split-cid
     (do
-      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:flow-action :run-step
-                                                                                  :step        (name step-type)
-                                                                                  :desc        desc})
+      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:log         :flow/run-step
+                                                                                  :step-type   step-type
+                                                                                  :step-desc   desc})
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
         (if next-world
@@ -169,7 +169,7 @@
 
 (defn announce-flow [flow-description]
   (emit-debug-ln (str "Running flow: " flow-description) {:flow-description flow-description
-                                                          :flow-action      :announce-flow}))
+                                                          :log      :flow/start}))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
@@ -178,7 +178,7 @@
                    (if success?
                      "succesfully"
                      "with failures") "\n") {:flow-description flow-description
-                                             :flow-action      :announce-results
+                                             :log              :flow/finish
                                              :success?         (boolean success?)})
   (boolean success?))
 
