@@ -321,14 +321,14 @@
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log") => irrelevant
-               (f/emit-debug-ln anything & anything) => irrelevant :times 3))
+               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+ test flow log" anything) => irrelevant
+               (f/emit-debug-ln anything anything) => irrelevant :times 3))
 
        (fact "when no test description is given"
              (flow (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+") => irrelevant
-               (f/emit-debug-ln anything & anything) => irrelevant :times 3)))
+               (f/emit-debug-ln #"Running flow: common-test.postman.flow-test:\d+" anything) => irrelevant
+               (f/emit-debug-ln anything anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
       (macroexpand-1 '(flow "rataria" (fact 1 => 1)))
