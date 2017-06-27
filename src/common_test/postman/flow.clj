@@ -176,10 +176,10 @@
     (stdout-emit desc))
   (emit-debug-ln (str "Flow " flow-description " finished"
                    (if success?
-                     "succesfully"
-                     "with failures") "\n") {:flow-description flow-description
-                                             :log              :flow/finish
-                                             :success?         (boolean success?)})
+                     " successfully"
+                     " with failures") "\n") {:flow-description flow-description
+                                              :log              :flow/finish
+                                              :success?         (boolean success?)})
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
