@@ -1,6 +1,6 @@
 (ns common-test.postman.flow-test
   (:require [common-core.misc :as misc]
-            [common-test.postman.flow :as f :refer [flow tabular-flow *world*]]
+            [common-test.postman.flow :as f :refer [flow tabular-flow *world* *flow*]]
             [common-core.test-helpers :refer [embeds iso]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
@@ -38,6 +38,17 @@
       (fact "flow meta contains the CID"
             (meta (last-fact-checked)) => (embeds {:postman  true
                                                    :flow/cid "FLOW.A-CID"})))
+
+(fact "it exposes flow information"
+      (flow
+        (fact *flow* => (embeds {:name        #"common-test.postman.flow-test\:\d+"
+                                 :title       nil
+                                 :description #"common-test.postman.flow-test\:\d+"}))) => true
+
+      (flow "title"
+        (fact *flow* => (embeds {:name        #"common-test.postman.flow-test\:\d+"
+                                 :title       "title"
+                                 :description #"common-test.postman.flow-test\:\d+ title$"}))) => true)
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
