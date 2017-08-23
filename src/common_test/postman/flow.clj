@@ -14,6 +14,7 @@
 (def ^:dynamic *probe-sleep-period* 10)
 (def ^:dynamic *verbose* false)
 (def ^:dynamic *world* {})
+(def ^:dynamic *flow* {})
 
 (def worlds-atom (atom {}))
 
@@ -200,15 +201,18 @@
 
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*) ":" (:line (meta &form)))
-        [flow-description in-forms] (if (string? (first forms))
-                                      [(str flow-name " " (first forms)) (rest forms)]
-                                      [flow-name forms])]
+        [flow-title in-forms] (if (string? (first forms))
+                                [(first forms) (rest forms)]
+                                [nil forms])
+        flow-description (if flow-title (str flow-name " " flow-title) flow-name)]
     (wrap-with-metadata flow-description
-                        `(with-cid
-                           (announce-flow ~flow-description)
-                           (->> (list ~@(forms->steps in-forms))
-                                run-steps
-                                (announce-results ~flow-description))))))
+                        `(binding [*flow* {:name        ~flow-name
+                                           :title       ~flow-title}]
+                           (with-cid
+                             (announce-flow ~flow-description)
+                             (->> (list ~@(forms->steps in-forms))
+                                  run-steps
+                                  (announce-results ~flow-description)))))))
 
 (defmacro ^::query fnq [& forms]
   `(fn ~@forms))
