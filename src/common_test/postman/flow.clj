@@ -201,12 +201,12 @@
 
 (defmacro flow [& forms]
   (let [flow-name (str (ns-name *ns*) ":" (:line (meta &form)))
-        [flow-title flow-description in-forms] (if (string? (first forms))
-                                                [(first forms) (str flow-name " " (first forms)) (rest forms)]
-                                                [nil flow-name forms])]
+        [flow-title in-forms] (if (string? (first forms))
+                                [(first forms) (rest forms)]
+                                [nil forms])
+        flow-description (if flow-title (str flow-name " " flow-title) flow-name)]
     (wrap-with-metadata flow-description
                         `(binding [*flow* {:name        ~flow-name
-                                           :description ~flow-description
                                            :title       ~flow-title}]
                            (with-cid
                              (announce-flow ~flow-description)

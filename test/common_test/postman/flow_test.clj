@@ -41,14 +41,12 @@
 
 (fact "it exposes flow information"
       (flow
-        (fact *flow* => (embeds {:name        #"common-test.postman.flow-test\:\d+"
-                                 :title       nil
-                                 :description #"common-test.postman.flow-test\:\d+"}))) => true
+        (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
+                                 :title nil}))) => true
 
       (flow "title"
-        (fact *flow* => (embeds {:name        #"common-test.postman.flow-test\:\d+"
-                                 :title       "title"
-                                 :description #"common-test.postman.flow-test\:\d+ title$"}))) => true)
+        (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
+                                 :title "title"}))) => true)
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
