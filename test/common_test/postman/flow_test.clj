@@ -1,14 +1,16 @@
 (ns common-test.postman.flow-test
   (:require [common-core.misc :as misc]
-            [common-test.postman.flow :as f :refer [flow tabular-flow *world* *flow*]]
             [common-core.test-helpers :refer [embeds iso]]
+            [common-test.postman.flow
+             :as
+             f
+             :refer
+             [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
-            [midje.sweet :refer :all]
-            [clojure.walk :as walk])
-  (:import (clojure.lang Atom IPersistentList)
-           (java.io StringWriter)))
+            [midje.sweet :refer :all])
+  (:import clojure.lang.Atom))
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -41,12 +43,12 @@
 
 (fact "it exposes flow information"
       (flow
-        (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
-                                 :title nil}))) => true
+       (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
+                                :title nil}))) => true
 
       (flow "title"
-        (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
-                                 :title "title"}))) => true)
+            (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
+                                     :title "title"}))) => true)
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)

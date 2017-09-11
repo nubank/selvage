@@ -1,14 +1,13 @@
 (ns common-test.postman.flow
-  (:require [schema.core :as s]
+  (:require [common-core.visibility :as vis]
             [common-test.formatting :as formatting]
-            [midje.sweet :refer [fact facts anything tabular truthy]]
-            [midje.repl :refer [last-fact-checked]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
-            [common-core.visibility :as vis]
-            [clojure.string :as str])
-  (:import [java.io StringWriter ByteArrayOutputStream PrintStream]
-           [clojure.lang Symbol PersistentList IPersistentList ISeq]))
+            [midje.repl :refer [last-fact-checked]]
+            [midje.sweet :refer [fact facts tabular truthy]]
+            [schema.core :as s])
+  (:import [clojure.lang ISeq Symbol]
+           [java.io ByteArrayOutputStream PrintStream StringWriter]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -55,17 +54,17 @@
       (apply f args))))
 
 (defn timed-apply [run-function & args]
-  (let [start (System/nanoTime)
-        ret (apply run-function args)
+  (let [start   (System/nanoTime)
+        ret     (apply run-function args)
         elapsed (/ (double (- (System/nanoTime) start)) 1000000.0)]
     [elapsed ret]))
 
 (defn run-step [[world _] [step-type f desc]]
   (vis/with-split-cid
     (do
-      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:log         :flow/run-step
-                                                                                  :step-type   step-type
-                                                                                  :step-desc   desc})
+      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:log       :flow/run-step
+                                                                                  :step-type step-type
+                                                                                  :step-desc desc})
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
         (if next-world
@@ -86,7 +85,7 @@
   (letfn [(retry? [elapsed-millis] (<= elapsed-millis *probe-timeout*))
           (retry-f [elapsed-so-far f w]
             (let [[time [success? desc :as res]] (timed-apply f w)
-                  elapsed (+ elapsed-so-far time)]
+                  elapsed                        (+ elapsed-so-far time)]
               (if success?
                 res
                 (if (retry? elapsed)
@@ -113,9 +112,9 @@
 (defn check->fn-expr [check-expr]
   `(fn [world#]
      (let [writer# (new StringWriter)]
-       (binding [*world* world#
+       (binding [*world*                 world#
                  clojure.test/*test-out* writer#]
-         (let [result# ~check-expr
+         (let [result#  ~check-expr
                success# (when result#
                           world#)]
            [success# (str writer#)])))))
@@ -155,7 +154,7 @@
   (let [[fst snd] l]
     (cond
       (#{'partial 'comp} fst) (form->var snd)
-      :else (form->var fst))))
+      :else                   (form->var fst))))
 
 (defmethod form->var :default [_]
   nil)
@@ -165,12 +164,12 @@
           (is-query? [form] (-> form form->var meta ::query))
           (classify [form] (cond (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
                                  (is-query? form) [:query (transition->fn-expr form) (str form)]
-                                 :else [:transition (transition->fn-expr form) (str form)]))]
+                                 :else            [:transition (transition->fn-expr form) (str form)]))]
     (->> forms (map classify) retry-sequences seq)))
 
 (defn announce-flow [flow-description]
   (emit-debug-ln (str "Running flow: " flow-description) {:flow-description flow-description
-                                                          :log      :flow/start}))
+                                                          :log              :flow/start}))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
@@ -195,19 +194,28 @@
 
 (defmacro with-cid [& body]
   `(vis/with-split-cid "FLOW"
-                       (let [result# (do ~@body)]
-                         (update-metadata-w-cid!)
-                         result#)))
+     (let [result# (do ~@body)]
+       (update-metadata-w-cid!)
+       result#)))
 
-(defmacro flow [& forms]
-  (let [flow-name (str (ns-name *ns*) ":" (:line (meta &form)))
+(defn get-flow-information
+  [forms metadata]
+  (let [flow-name             (str (ns-name *ns*) ":" (:line metadata))
         [flow-title in-forms] (if (string? (first forms))
                                 [(first forms) (rest forms)]
                                 [nil forms])
-        flow-description (if flow-title (str flow-name " " flow-title) flow-name)]
+        flow-description      (if flow-title (str flow-name " " flow-title) flow-name)]
+    {:flow-description flow-description
+     :flow-name        flow-name
+     :flow-title       flow-title
+     :in-forms         in-forms}))
+
+(defmacro flow [& forms]
+  (let [{:keys [flow-description flow-name flow-title in-forms]} (get-flow-information forms
+                                                                                       (meta &form))]
     (wrap-with-metadata flow-description
-                        `(binding [*flow* {:name        ~flow-name
-                                           :title       ~flow-title}]
+                        `(binding [*flow* {:name  ~flow-name
+                                           :title ~flow-title}]
                            (with-cid
                              (announce-flow ~flow-description)
                              (->> (list ~@(forms->steps in-forms))
