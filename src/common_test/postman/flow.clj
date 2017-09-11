@@ -198,7 +198,7 @@
        (update-metadata-w-cid!)
        result#)))
 
-(defn parse-flow-data
+(defn get-flow-information
   [forms metadata]
   (let [flow-name             (str (ns-name *ns*) ":" (:line metadata))
         [flow-title in-forms] (if (string? (first forms))
@@ -211,7 +211,8 @@
      :in-forms         in-forms}))
 
 (defmacro flow [& forms]
-  (let [{:keys [flow-description flow-name flow-title in-forms]} (parse-flow-data forms (meta &form))]
+  (let [{:keys [flow-description flow-name flow-title in-forms]} (get-flow-information forms
+                                                                                       (meta &form))]
     (wrap-with-metadata flow-description
                         `(binding [*flow* {:name  ~flow-name
                                            :title ~flow-title}]
