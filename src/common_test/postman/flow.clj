@@ -1,7 +1,6 @@
 (ns common-test.postman.flow
   (:require [common-core.visibility :as vis]
             [common-test.formatting :as formatting]
-            [crusoe.spi :as crusoe]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
@@ -196,21 +195,26 @@
 (defmacro with-cid [& body]
   `(vis/with-split-cid "FLOW"
      (let [result# (do ~@body)]
-                         (update-metadata-w-cid!)
-                         result#)))
+       (update-metadata-w-cid!)
+       result#)))
 
-(defmacro flow [& forms]
-  (let [flow-name             (str (ns-name *ns*) ":" (:line (meta &form)))
+(defn parse-flow-data
+  [forms metadata]
+  (let [flow-name             (str (ns-name *ns*) ":" (:line metadata))
         [flow-title in-forms] (if (string? (first forms))
                                 [(first forms) (rest forms)]
                                 [nil forms])
         flow-description      (if flow-title (str flow-name " " flow-title) flow-name)]
+    {:flow-description flow-description
+     :flow-name        flow-name
+     :flow-title       flow-title
+     :in-forms         in-forms}))
+
+(defmacro flow [& forms]
+  (let [{:keys [flow-description flow-name flow-title in-forms]} (parse-flow-data forms (meta &form))]
     (wrap-with-metadata flow-description
-                        `(binding [*flow*            {:name  ~flow-name
-                                                      :title ~flow-title}
-                                   crusoe/*metadata* {:flow-name  ~flow-name
-                                                      :flow-title ~flow-title}]
-                           (crusoe/clean-flow!)
+                        `(binding [*flow* {:name  ~flow-name
+                                           :title ~flow-title}]
                            (with-cid
                              (announce-flow ~flow-description)
                              (->> (list ~@(forms->steps in-forms))

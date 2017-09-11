@@ -6,7 +6,6 @@
              f
              :refer
              [*flow* *world* flow tabular-flow]]
-            [crusoe.spi :as crusoe]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
@@ -50,13 +49,6 @@
       (flow "title"
             (fact *flow* => (embeds {:name  #"common-test.postman.flow-test\:\d+"
                                      :title "title"}))) => true)
-
-(fact ""
-      (flow "title"
-            (fact crusoe/*metadata* => (contains {:flow-name (re-pattern (str *ns*))
-                                                  :flow-title "title"}))) => true
-      (provided
-       (crusoe/clean-flow!) => irrelevant))
 
 (fact "embedding tests"
       (flow (fact 1 => 1)) => truthy)
