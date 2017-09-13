@@ -200,12 +200,14 @@
 
 (defn get-flow-information
   [forms metadata]
-  (let [flow-name             (str (ns-name *ns*) ":" (:line metadata))
+  (let [flow-ns               (ns-name *ns*)
+        flow-name             (str flow-ns ":" (:line metadata))
         [flow-title in-forms] (if (string? (first forms))
                                 [(first forms) (rest forms)]
                                 [nil forms])
         flow-description      (if flow-title (str flow-name " " flow-title) flow-name)]
     {:flow-description flow-description
+     :flow-ns          flow-ns
      :flow-name        flow-name
      :flow-title       flow-title
      :in-forms         in-forms}))
