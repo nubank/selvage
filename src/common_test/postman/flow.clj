@@ -142,6 +142,7 @@
      (try
        (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
+         (vis/error :log :e2e-exception :exception throwable#)
          (fail ~(format-expr transition-expr) "threw exception:\n"
                 (formatting/format-exception throwable#))))))
 
