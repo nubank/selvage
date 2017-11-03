@@ -37,7 +37,7 @@
 (defn worlds [] (deref worlds-atom))
 
 (def Expression s/Any)
-(def Step [(s/one (s/enum :transition :check :query) 'kind) (s/one Expression 'expression) (s/one s/Str 'description)])
+(def Step [(s/one (s/enum :transition :retry) 'kind) (s/one Expression 'expression) (s/one s/Str 'description)])
 
 (defn- fact-desc [fact-form]
   (if (string? (second fact-form))
