@@ -1,16 +1,12 @@
 (ns common-test.postman.flow-test
   (:require [common-core.misc :as misc]
             [common-core.test-helpers :refer [embeds iso]]
-            [common-test.postman.flow
-             :as
-             f
-             :refer
-             [*flow* *world* flow tabular-flow]]
+            [common-test.postman.flow :as f :refer [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as m-emission]
             [midje.emission.state :as m-state]
             [midje.repl :refer [last-fact-checked]]
             [midje.sweet :refer :all])
-  (:import clojure.lang.Atom))
+  (:import [clojure.lang Atom]))
 
 (defn step1 [world] (assoc world :1 1))
 (defn step2 [world] (assoc world :2 2))
@@ -183,7 +179,7 @@
                         (fact *world* => (embeds {:x 3}))) => truthy))))
 
   (let [counts (atom {:step-1 0 :step-2 0 :step-3 0})]
-    (fact "retries several query steps preceeting a check until it passes"
+    (fact "retries several query steps preceeding a check until it passes"
           (def preceeding-queries-succeed-on-third-step-execution
             (fact
                   (flow (f/fnq [w]
@@ -194,7 +190,7 @@
                                (swap! counts update-in [:step-3] inc))
                         (fact *world* => (embeds {:step-1 3 :step-2 3 :step-3 3}))) => truthy))))
 
-  (fact "retries several query steps preceeting a check until it passes"
+  (fact "retries several query steps preceeding a check until it passes"
         (let [counts (atom {:non-query-step 0 :step-2 0 :step-3 0})]
           (fact "positive test"
                 (def non-query-steps-are-not-retried-positive
