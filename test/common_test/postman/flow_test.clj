@@ -355,3 +355,16 @@
            2 1)
          ;; All checks are doubled, because we need to wrap the flow in a fact.
          (m-state/output-counters)) => {:midje-failures 2, :midje-passes 4})
+
+(facts "future-fact"
+  (let [future-check (atom [])]
+    (fact "common flow with future-fact"
+      (flow
+        (fact "First valid assertion"
+          (swap! future-check conj :first) => [:first])
+        (future-fact "Second ignored assertion"
+                     (swap! future-check conj :second) => [:second])
+        (fact "Third valid assertion"
+          (swap! future-check conj :third) => [:first :third])) => true)
+    (fact "check future-fact pass through"
+      (= @future-check [:first :third]))))

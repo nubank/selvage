@@ -119,6 +119,11 @@
                           world#)]
            [success# (str writer#)])))))
 
+(defn future->fn-expr [form]
+  `(fn [world#]
+     ~form ; Show TO DO message when enabled
+     [world# nil]))
+
 (defn print-exception-string [exception]
   (let [output-baos (ByteArrayOutputStream.)]
     (.printStackTrace exception (PrintStream. output-baos))
@@ -161,11 +166,13 @@
   nil)
 
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
-  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts" "future-fact" "future-facts"})))
+  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
+          (is-future? [form] (and (coll? form) (-> form first name #{"future-fact" "future-facts"})))
           (is-query? [form] (-> form form->var meta ::query))
-          (classify [form] (cond (is-check? form) [:check (check->fn-expr form) (fact-desc form)]
-                                 (is-query? form) [:query (transition->fn-expr form) (str form)]
-                                 :else            [:transition (transition->fn-expr form) (str form)]))]
+          (classify [form] (cond (is-check? form)  [:check (check->fn-expr form) (fact-desc form)]
+                                 (is-future? form) [:check (future->fn-expr form) (fact-desc form)]
+                                 (is-query? form)  [:query (transition->fn-expr form) (str form)]
+                                 :else             [:transition (transition->fn-expr form) (str form)]))]
     (->> forms (map classify) retry-sequences seq)))
 
 (defn announce-flow [flow-description]
