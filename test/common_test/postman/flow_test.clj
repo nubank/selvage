@@ -363,8 +363,8 @@
         (fact "First valid assertion"
           (swap! future-check conj :first) => [:first])
         (future-fact "Second ignored assertion"
-                     (swap! future-check conj :second) => [:second])
+          (swap! future-check conj :second) => [:second])
         (fact "Third valid assertion"
           (swap! future-check conj :third) => [:first :third])) => true)
     (fact "check future-fact pass through"
-      (= @future-check [:first :third]))))
+      @future-check => [:first :third])))

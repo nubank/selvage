@@ -121,7 +121,7 @@
 
 (defn future->fn-expr [form]
   `(fn [world#]
-     ~form ; Show TO DO message when enabled
+     ~form ; This shows 'WORK TO DO...' message on output
      [world# nil]))
 
 (defn print-exception-string [exception]
