@@ -1,11 +1,12 @@
-(ns common-test.postman.flow
-  (:require [common-core.visibility :as vis]
-            [common-test.formatting :as formatting]
-            [midje.emission.api :as m-emission]
-            [midje.emission.state :as m-state]
+(ns postman.flow
+  (:require [postman.visibility :as vis]
+            [postman.formatting :as formatting]
+            [midje.emission.api :as emission.api]
+            [midje.emission.state :as emission.state]
             [midje.repl :refer [last-fact-checked]]
             [midje.sweet :refer [fact facts tabular truthy]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [taoensso.timbre :as timbre])
   (:import [clojure.lang ISeq Symbol]
            [java.io ByteArrayOutputStream PrintStream StringWriter]))
 
@@ -18,12 +19,12 @@
 (def worlds-atom (atom {}))
 
 (defn stdout-emit [& strings]
-  (when (m-emission/config-above? :print-nothing)
+  (when (emission.api/config-above? :print-nothing)
     (apply print strings)
     (flush)))
 
 (defn emit-ln [message log-map]
-  (vis/info :log-map log-map)
+  (timbre/info :log-map log-map)
   (stdout-emit (format "%-70s\t\t\t[CID: %s]\n" message (vis/current-cid))))
 
 (defn emit-debug-ln [message log-map]
@@ -48,9 +49,9 @@
   (-> kind #{:check :query} boolean))
 
 (defn resetting-midje-counters [f]
-  (let [output-counters-before (m-state/output-counters)]
+  (let [output-counters-before (emission.state/output-counters)]
     (fn [& args]
-      (m-state/set-output-counters! output-counters-before)
+      (emission.state/set-output-counters! output-counters-before)
       (apply f args))))
 
 (defn timed-apply [run-function & args]
@@ -130,7 +131,7 @@
     (String. (.toByteArray output-baos) "UTF-8")))
 
 (defn fail [expr-str details & failure-messages]
-  (m-state/output-counters:inc:midje-failures!)
+  (emission.state/output-counters:inc:midje-failures!)
   [false (apply str "\033[0;33m  Step " expr-str " " details " \033[0m " failure-messages)])
 
 (defn valid-world-result [world expr-str]
@@ -147,7 +148,7 @@
      (try
        (valid-world-result (~transition-expr world#) ~(str transition-expr))
        (catch Throwable throwable#
-         (vis/error :log :e2e-exception :exception throwable#)
+         (timbre/error throwable# :log :transition-exception)
          (fail ~(format-expr transition-expr) "threw exception:\n"
                 (formatting/format-exception throwable#))))))
 
@@ -197,7 +198,7 @@
 
 (defn update-metadata-w-cid! []
   (-> (last-fact-checked)
-      (vary-meta assoc :flow/cid vis/*cid*)
+      (vary-meta assoc :flow/cid (vis/current-cid))
       (midje.data.compendium/record-fact-check!))) ;; HACK: re-record fact so the meta with CID is saved
 
 (defmacro with-cid [& body]
