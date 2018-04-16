@@ -38,7 +38,9 @@
 (defn worlds [] (deref worlds-atom))
 
 (def Expression s/Any)
-(def Step [(s/one (s/enum :transition :retry) 'kind) (s/one Expression 'expression) (s/one s/Str 'description)])
+(def Step [(s/one (s/enum :transition :retry) 'kind)
+           (s/one Expression 'expression)
+           (s/one s/Str 'description)])
 
 (defn- fact-desc [fact-form]
   (if (string? (second fact-form))
@@ -63,9 +65,10 @@
 (defn run-step [[world _] [step-type f desc]]
   (vis/with-split-cid
     (do
-      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc) {:log       :flow/run-step
-                                                                                  :step-type step-type
-                                                                                  :step-desc desc})
+      (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc)
+                     {:log       :flow/run-step
+                      :step-type step-type
+                      :step-desc desc})
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
         (if next-world
@@ -92,7 +95,8 @@
                 (if (retry? elapsed)
                   (do
                     (Thread/sleep *probe-sleep-period*)
-                    (retry-f (+ elapsed *probe-sleep-period*) f w)) ; time accounting might be improved
+                    ;; time accounting might be improved
+                    (retry-f (+ elapsed *probe-sleep-period*) f w))
                   [false desc]))))]
     (partial retry-f 0 (resetting-midje-counters f))))
 
@@ -166,19 +170,28 @@
 (defmethod form->var :default [_]
   nil)
 
+(defn- is-check? [form]
+  (and (coll? form)
+       (-> form first name #{"fact" "facts"})))
+(defn- is-future? [form]
+  (and (coll? form)
+       (-> form first name #{"future-fact" "future-facts"})))
+(defn- is-query? [form]
+  (-> form form->var meta ::query))
+
+(defn- classify [form]
+  (cond (is-check? form)  [:check (check->fn-expr form) (fact-desc form)]
+        (is-future? form) [:check (future->fn-expr form) (fact-desc form)]
+        (is-query? form)  [:query (transition->fn-expr form) (str form)]
+        :else             [:transition (transition->fn-expr form) (str form)]))
+
 (s/defn forms->steps :- [Step] [forms :- [Expression]]
-  (letfn [(is-check? [form] (and (coll? form) (-> form first name #{"fact" "facts"})))
-          (is-future? [form] (and (coll? form) (-> form first name #{"future-fact" "future-facts"})))
-          (is-query? [form] (-> form form->var meta ::query))
-          (classify [form] (cond (is-check? form)  [:check (check->fn-expr form) (fact-desc form)]
-                                 (is-future? form) [:check (future->fn-expr form) (fact-desc form)]
-                                 (is-query? form)  [:query (transition->fn-expr form) (str form)]
-                                 :else             [:transition (transition->fn-expr form) (str form)]))]
-    (->> forms (map classify) retry-sequences seq)))
+  (->> forms (map classify) retry-sequences seq))
 
 (defn announce-flow [flow-description]
-  (emit-debug-ln (str "Running flow: " flow-description) {:flow-description flow-description
-                                                          :log              :flow/start}))
+  (emit-debug-ln (str "Running flow: " flow-description)
+                 {:flow-description flow-description
+                  :log              :flow/start}))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
@@ -199,7 +212,8 @@
 (defn update-metadata-w-cid! []
   (-> (last-fact-checked)
       (vary-meta assoc :flow/cid (vis/current-cid))
-      (midje.data.compendium/record-fact-check!))) ;; HACK: re-record fact so the meta with CID is saved
+      ;; HACK: re-record fact so the meta with CID is saved
+      (midje.data.compendium/record-fact-check!)))
 
 (defmacro with-cid [& body]
   `(vis/with-split-cid "FLOW"
@@ -222,8 +236,10 @@
      :in-forms         in-forms}))
 
 (defmacro flow [& forms]
-  (let [{:keys [flow-description flow-name flow-title in-forms]} (get-flow-information forms
-                                                                                       (meta &form))]
+  (let [{:keys [flow-name
+                flow-title
+                in-forms
+                flow-description]} (get-flow-information forms (meta &form))]
     (wrap-with-metadata flow-description
                         `(binding [*flow* {:name  ~flow-name
                                            :title ~flow-title}]

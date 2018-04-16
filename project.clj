@@ -12,6 +12,8 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [io.aviso/pretty "0.1.34"]
                  [midje "1.9.2-alpha2" :exclusions [org.clojure/clojure]]
+                 [prismatic/schema "1.1.7"]
+                 [com.google.guava/guava "23.0"]
                  [com.taoensso/timbre "4.10.0"]]
 
   :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.2.3"]]}
