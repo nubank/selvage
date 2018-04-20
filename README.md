@@ -5,7 +5,7 @@
 
 Integration testing at the edges of a microservice.
 
-_What are selvage tests?_
+### What are selvage tests?
 
 Selvage tests are integration-style tests for a single service that use the [`flow`](https://github.com/nubank/selvage/blob/master/src/selvage/flow.clj#L216-L226) macro.
 The entry point for selvage tests are the endpoints of the service: http handlers and kafka consumers.
