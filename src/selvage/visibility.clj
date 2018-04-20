@@ -1,4 +1,4 @@
-(ns postman.visibility
+(ns selvage.visibility
   (:import [com.google.common.io BaseEncoding]
            [java.util Random]))
 

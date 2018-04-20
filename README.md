@@ -1,20 +1,25 @@
-# postman
+# selvage
 
-_What are postman tests?_
+> noun:
+> the edge of woven fabric finished so as to prevent raveling
 
-Postman tests are integration-style tests for a single service that use the [`flow`](https://github.com/nubank/postman/blob/master/src/postman/flow.clj#L216-L226) macro.
-The entry point for postman tests are the endpoints of the service: http handlers and kafka consumers.
+Integration testing at the edges of a microservice.
+
+_What are selvage tests?_
+
+Selvage tests are integration-style tests for a single service that use the [`flow`](https://github.com/nubank/selvage/blob/master/src/selvage/flow.clj#L216-L226) macro.
+The entry point for selvage tests are the endpoints of the service: http handlers and kafka consumers.
 Hence, all internal service code remains un-mocked, but external communications with HTTP, kafka, and other components like S3, redis, etc, are mocked.
 
 Flows follow a world-transition pattern. The flow starts with a base world state, which is an empty map, and each subsequent form in the flow is either a transition, query, or check step.
 
-Given that service code isn't mocked in postman tests, schema validation is enabled by default within the `flow` macro.
+Given that service code isn't mocked in selvage tests, schema validation is enabled by default within the `flow` macro.
 
 The flow structure can also be the basis for end-to-end (`e2e`) style tests. In the case of `e2e` tests, incoming/outgoing correspondences aren't mocked, so flow transitions make can send HTTP requests or produce kafka messages that will be processed by fully spun up services.
 
 ### system components
 
-Postman flows are capable of testing a single service's logic, that is, everything that lies between the incoming data (http endpoints and kafka consumer handlers) and outgoing data (http client requests and kafka message production). Thus, to trigger things like message consumption, we need access to the service's various components.
+Selvage flows are capable of testing a single service's logic, that is, everything that lies between the incoming data (http endpoints and kafka consumer handlers) and outgoing data (http client requests and kafka message production). Thus, to trigger things like message consumption, we need access to the service's various components.
 
 Convention is write an `init!` transition function that initializes the system components and stores it in the world under the `:system` key.
 
@@ -30,7 +35,7 @@ The world is a map that stores:
 
  * __Transition functions__: a 1-arity function that must take in a world and return a world. They generally have side-effects, store results under keys for checking, and by principal avoid mocking as much as possible.
  * __Checks__: are Midje `fact` or `facts` expressions that should perform checks over values stored in the world. Since facts don't modify the world, or accept a world argument, the world is made available within facts via the `*world*` dynamic variable. Checks are retriable; the `flow` macro will re-run checks that fail until they succeed or a timeout is reached.
- * __Query functions__: retriable transition functions defined using [`postman.flow/defnq`](https://github.com/nubank/postman/blob/master/src/postman/flow.clj#L228-L232) and `fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
+ * __Query functions__: retriable transition functions defined using [`postman.flow/defnq`](https://github.com/nubank/selvage/blob/master/src/selvage/flow.clj#L228-L232) and `fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
 
 ### simple example
 

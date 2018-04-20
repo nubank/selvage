@@ -1,6 +1,6 @@
-(ns postman.flow
-  (:require [postman.visibility :as vis]
-            [postman.formatting :as formatting]
+(ns selvage.flow
+  (:require [selvage.visibility :as vis]
+            [selvage.formatting :as formatting]
             [midje.emission.api :as emission.api]
             [midje.emission.state :as emission.state]
             [midje.repl :refer [last-fact-checked]]
@@ -206,7 +206,7 @@
 
 (defn wrap-with-metadata [flow-name flow-expr]
   `(s/with-fn-validation
-     (facts :postman ~flow-name
+     (facts :selvage  ~flow-name
        ~flow-expr)))
 
 (defn update-metadata-w-cid! []

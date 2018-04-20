@@ -1,7 +1,7 @@
-(ns postman.flow-test
+(ns selvage.flow-test
   (:require [matcher-combinators.midje :refer [match]]
             [matcher-combinators.matchers :as m]
-            [postman.flow :as f :refer [*flow* *world* flow tabular-flow]]
+            [selvage.flow :as f :refer [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as emission.api]
             [midje.emission.state :as emission.states]
             [midje.repl :refer [last-fact-checked]]
@@ -34,16 +34,16 @@
       (flow (fact "test" (+ 1 1) => 2)) => true
 
       (fact "flow meta contains the CID"
-            (meta (last-fact-checked)) => (match {:postman  true
+            (meta (last-fact-checked)) => (match {:selvage  true
                                                   :flow/cid #(re-find #"FLOW.*" %)})))
 
 (fact "it exposes flow information"
       (flow
-       (fact *flow* => (match {:name  #(re-find #"postman.flow-test\:\d+" %)
+       (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
                                :title nil}))) => true
 
       (flow "title"
-            (fact *flow* => (match {:name  #(re-find #"postman.flow-test\:\d+" %)
+            (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
                                     :title "title"}))) => true)
 
 (fact "embedding tests"
@@ -331,13 +331,13 @@
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: postman.flow-test:\d+ test flow log" anything) => irrelevant
+               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+ test flow log" anything) => irrelevant
                (f/emit-debug-ln anything anything) => irrelevant :times 3))
 
        (fact "when no test description is given"
              (flow (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: postman.flow-test:\d+" anything) => irrelevant
+               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+" anything) => irrelevant
                (f/emit-debug-ln anything anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
@@ -346,8 +346,8 @@
        (list 'schema.core/with-fn-validation
              (m/embeds
                (list 'midje.sweet/facts
-                     :postman
-                     #(re-find #"postman.flow-test:[0-9]+ rataria" %))))))
+                     :selvage
+                     #(re-find #"selvage.flow-test:[0-9]+ rataria" %))))))
 
 (facts "Tabular works as expected"
        (emission.api/silently

@@ -1,6 +1,6 @@
-(defproject nubank/postman "0.0.1"
+(defproject nubank/selvage "0.0.1"
   :description "Macro for writing tests in world-transition pattern"
-  :url "https://github.com/nubank/postman"
+  :url "https://github.com/nubank/selvage"
   :license {:name "Apache License, Version 2.0"}
 
   :repositories [["central" {:url "https://repo1.maven.org/maven2/" :snapshots false}]
