@@ -10,11 +10,12 @@ Flows follow a world-transition pattern. The flow starts with a base world state
 
 Given that service code isn't mocked in postman tests, schema validation is enabled by default within the `flow` macro.
 
-The flow structure is also the basis for `e2e` tests, but in the case of `e2e` tests, incoming/outgoing correspondences aren't mocked (at least not fully).
+The flow structure can also be the basis for end-to-end (`e2e`) style tests. In the case of `e2e` tests, incoming/outgoing correspondences aren't mocked, so flow transitions make can send HTTP requests or produce kafka messages that will be processed by fully spun up services.
 
 ### system components
 
-Postman flows are capable of testing the logic of a single service that lies in between and including receiving incoming data (http/kafka) and producing outgoing data (http/kafka). Thus, we need access to the service's mutable state, that is, its components system (TODO create nubank component docs and link to them).
+Postman flows are capable of testing a single service's logic, that is, everything that lies between the incoming data (http endpoints and kafka consumer handlers) and outgoing data (http client requests and kafka message production). Thus, to trigger things like message consumption, we need access to the service's various components.
+
 Convention is write an `init!` transition function that initializes the system components and stores it in the world under the `:system` key.
 
 ### world
