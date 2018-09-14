@@ -7,14 +7,16 @@
                  ["clojars" {:url "https://clojars.org/repo/"}]]
 
   :plugins [[lein-midje "3.2.1"]
-            [lein-ancient "0.6.14"]]
+            [lein-ancient "0.6.15"]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [io.aviso/pretty "0.1.34"]
-                 [midje "1.9.2-alpha2" :exclusions [org.clojure/clojure]]
-                 [prismatic/schema "1.1.7"]
+                 [com.fasterxml.jackson.core/jackson-databind "2.9.6"]
+                 [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor "2.9.6"]
+                 [midje "1.9.3-alpha1" :exclusions [org.clojure/clojure]]
+                 [prismatic/schema "1.1.9"]
                  [com.google.guava/guava "23.0"]
                  [com.taoensso/timbre "4.10.0"]]
 
-  :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.2.3"]]}
+  :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.3.1"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}})

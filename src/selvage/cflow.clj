@@ -9,6 +9,7 @@
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
 (def ^:dynamic *world* {})
+(def ^:dynamic *flow* {})
 (def ^:dynamic *verbose* false)
 
 (def worlds-atom (atom {}))
@@ -67,9 +68,10 @@
     [elapsed ret]))
 
 (defn resetting-midje-counters [f]
-  (let [output-counters-before @t/*report-counters*]
+  ;; TODO
+  (let [output-counters-before nil ;@t/*report-counters*
+        ]
     (fn [& args]
-      ;; TODO
       ;;(emission.state/set-output-counters! output-counters-before)
       (apply f args))))
 
@@ -106,8 +108,8 @@
      (let [writer# (new StringWriter)]
        (binding [*world*                 world#
                  clojure.test/*test-out* writer#
-                 t/*report-counters*       (ref t/*initial-report-counters*)]
-         (t/test-var ~test-var)
+                 t/*report-counters*     (ref t/*initial-report-counters*)]
+         (t/test-var (var ~test-var))
          (let [result#  (not (or (:fail @t/*report-counters*)
                                  (:error @t/*report-counters*)))
                success# (when result#
@@ -196,26 +198,13 @@
      :flow-title       flow-title
      :in-forms         in-forms}))
 
-
-
-
-
-
-
-
-
 (defmacro defflow [name & forms]
   (let [{:keys [flow-title
                 in-forms
                 flow-description]} (get-flow-information name forms (meta &form))]
-  `(let [test-vrs# (->> (ns-interns *ns*)
-                         vals
-                         (filter #(-> % meta :test))
-                         set)]
-     (println test-vrs#)
-     (do (~`t/deftest ~name
-           (->> (list ~@(forms->steps in-forms nil))
-                run-steps
-                ;(announce-results ~flow-description)
-                ))
-         (alter-meta! (var ~name) assoc :flow true)))))
+    `(do (~`t/deftest ~name
+                  (->> (list ~@(forms->steps in-forms nil))
+                       run-steps
+                       ;(announce-results ~flow-description)
+                       ))
+      (alter-meta! (var ~name) assoc :flow true))))
