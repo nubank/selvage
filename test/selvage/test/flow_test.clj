@@ -38,15 +38,15 @@
 ;; (flow)
 
 
-(def query-count (atom 0))
 (defflow query-retries
   "retyring query steps doesn't mess with test pass count"
-  (testing (is (= @query-count
+  (fn [w] (assoc w :query-count (atom 0)))
+  (testing (is (= @(:query-count *world*)
                   0)))
   (fn [w] ;; break the retry seq with a transistion
     w)
 
-  (f/fnq [w] {:x (swap! query-count inc)})
+  (f/fnq [w] {:x (swap! (:query-count w) inc)})
   (testing (is (match? *world*
                        {:x 3}))))
 

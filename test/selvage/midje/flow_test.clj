@@ -40,11 +40,11 @@
 
 (fact "it exposes flow information"
       (flow
-       (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
+       (fact *flow* => (match {:name  #(re-find #"selvage.midje.flow-test\:\d+" %)
                                :title nil}))) => true
 
       (flow "title"
-            (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
+            (fact *flow* => (match {:name  #(re-find #"selvage.midje.flow-test\:\d+" %)
                                     :title "title"}))) => true)
 
 (fact "embedding tests"
@@ -332,13 +332,13 @@
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
              (provided
-               (core/emit-debug-ln #"Running flow: selvage.flow-test:\d+ test flow log" anything) => irrelevant
+               (core/emit-debug-ln #"Running flow: selvage.midje.flow-test:\d+ test flow log" anything) => irrelevant
                (core/emit-debug-ln anything anything) => irrelevant :times 3))
 
        (fact "when no test description is given"
              (flow (fact 1 => 1)) => irrelevant
              (provided
-               (core/emit-debug-ln #"Running flow: selvage.flow-test:\d+" anything) => irrelevant
+               (core/emit-debug-ln #"Running flow: selvage.midje.flow-test:\d+" anything) => irrelevant
                (core/emit-debug-ln anything anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
@@ -348,7 +348,7 @@
              (m/embeds
                (list 'midje.sweet/facts
                      :selvage
-                     #(re-find #"selvage.flow-test:[0-9]+ rataria" %))))))
+                     #(re-find #"selvage.midje.flow-test:[0-9]+ rataria" %))))))
 
 (facts "Tabular works as expected"
        (emission.api/silently
