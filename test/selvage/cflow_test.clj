@@ -1,12 +1,12 @@
 (ns selvage.cflow-test
   (:require [selvage.cflow :as f :refer [*flow* *world* defflow]]
+            [matcher-combinators.test]
             [clojure.test :refer :all]))
 
 (deftest a-test
   (println "running a-test")
   (testing ":val is 0"
     (is (= 0 (:val *world*)))))
-
 
 (deftest b
   (testing "foo"
@@ -26,37 +26,34 @@
 (defflow flow "shows how flows can work with clojure.test"
   (fn [w] (assoc w :val 0))
 
-  (fn [w] (println "BEFORE a-test") w)
   a-test
-  (fn [w] (println "AFTER a-test") w)
 
   a-step
 
-  (fn [w] (println "BEFORE testing") w)
   (testing (is (= 1 (:a-val *world*))))
-  (fn [w] (println "AFTER testing") w)
-  (testing "foo" (is (= 2 (:a-val *world*))))
-  )
+  (testing (is (= 2 (:a-val *world*)))))
 
 ;; you run the defined flow via:
 ;; (flow)
 
+
+(def query-count (atom 0))
+(defflow query-retries
+  "retyring query steps doesn't mess with test pass count"
+  (testing (is (= @query-count
+                  0)))
+  (fn [w] ;; break the retry seq with a transistion
+    w)
+
+  (f/fnq [w] {:x (swap! query-count inc)})
+  (testing (is (match? *world*
+                       {:x 3}))))
+
 ;; you can set the test runner to only run `defflow`s and not `deftest`s
 ;; ideally this will be done more or less automatically
 (defn test-ns-hook []
-  (println "START test hook")
   (flow)
-  (println "END test hook"))
-
-#_(binding [f/*quiet* true]
-  (run-tests))
+  (query-retries))
 
 (run-tests)
-(comment
-(clojure.pprint/pprint
-  (macroexpand
-    `(defflow flow
-       (fn [w] (assoc w :val 0))
-       a-test)))
-)
 

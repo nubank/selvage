@@ -1,4 +1,5 @@
 (ns selvage.core
+  "Code shared between midje and clojure.test implementations"
   (:require [selvage.visibility :as vis]
             [schema.core :as s]
             [taoensso.timbre :as timbre])

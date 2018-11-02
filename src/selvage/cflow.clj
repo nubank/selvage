@@ -15,11 +15,9 @@
 (defn worlds [] (deref core/worlds-atom))
 
 (defn test-counter-reset [f]
-  ;; TODO
-  (let [output-counters-before nil ;@t/*report-counters*
-        ]
+  (let [output-counters-before @t/*report-counters*]
     (fn [& args]
-      ;;(emission.state/set-output-counters! output-counters-before)
+      ;; TODO reset counters correctly
       (apply f args))))
 
 (defn retry [f]
@@ -38,34 +36,29 @@
     (partial retry-f 0
       (test-counter-reset f))))
 
-(defn test-var->fn-expr [test-var]
+(defn run-test-var [test-var]
+  `(fn [] (t/test-var (var ~test-var))))
+
+(defn run-test-expr [testing-expr]
+  `(fn [] (do ~testing-expr)))
+
+(defn report-diff->successful? [report-before report-after]
+  (and (zero? (- (:fail report-before 0)
+                 (:fail report-after 0)))
+       (zero? (- (:error report-before 0)
+                 (:error report-after 0)))))
+
+(defn test->fn-expr [run-test-fn]
   `(fn [world#]
-     (let [writer# (new StringWriter)]
+     (let [writer#         (new StringWriter)
+           report-before# @t/*report-counters*]
        (binding [*world*                 world#
-                 clojure.test/*test-out* writer#
-                 t/*report-counters*     (ref t/*initial-report-counters*)]
-         (t/test-var (var ~test-var))
-         (let [result#  (t/successful? @t/*report-counters*)
+                 clojure.test/*test-out* writer#]
+         (~run-test-fn)
+         (let [result#  (report-diff->successful? report-before# @t/*report-counters*)
                success# (when result#
                           world#)]
            [success# (str writer#)])))))
-
-(defn testing->fn-expr [testing-expr]
-  `(fn [world#]
-     (let [writer# (new StringWriter)]
-       (binding [*world*                 world#
-                 clojure.test/*test-out* writer#
-                 t/*report-counters*     (ref t/*initial-report-counters*)]
-         (do ~testing-expr)
-         (let [result#  (t/successful? @t/*report-counters*)
-               success# (when result#
-                          world#)]
-           [success# (str writer#)])))))
-
-(defn fail [expr-str details & failure-messages]
-  ;; TODO
-
-  [false (apply str "\033[0;33m  Step " expr-str " " details " \033[0m " failure-messages)])
 
 (defn- is-test-var? [form]
   (and (symbol? form)
@@ -79,10 +72,10 @@
 
 (defn- classify [form]
   (cond
-    (is-testing? form)      [:check (testing->fn-expr form) (str form)]
-    (is-test-var? form)     [:check (test-var->fn-expr form) (str form)]
+    (is-testing? form)    [:check (-> form run-test-expr test->fn-expr) (str form)]
+    (is-test-var? form)   [:check (-> form run-test-var test->fn-expr) (str form)]
     (core/is-query? form) [:query (core/transition->fn-expr form) (str form)]
-    :else                   [:transition (core/transition->fn-expr form) (str form)]))
+    :else                 [:transition (core/transition->fn-expr form) (str form)]))
 
 (defmethod t/report ::flow [m]
   (t/with-test-out
@@ -140,3 +133,9 @@
                                  (announce-results ~flow-description)))))
                       (spec.test/unstrument))
       (alter-meta! (var ~name) assoc :flow true))))
+
+(defmacro ^::query fnq [& forms]
+  `(fn ~@forms))
+
+(defmacro defnq [name & forms]
+  `(def ~(with-meta name {::query true}) (fn ~@forms)))
