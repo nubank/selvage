@@ -1,5 +1,5 @@
-(ns selvage.cflow-test
-  (:require [selvage.cflow :as f :refer [*flow* *world* defflow]]
+(ns selvage.test.flow-test
+  (:require [selvage.test.flow :as f :refer [*flow* *world* defflow]]
             [matcher-combinators.test]
             [clojure.test :refer :all]))
 
@@ -31,6 +31,7 @@
   a-step
 
   (testing (is (= 1 (:a-val *world*))))
+  ;; example of failing test
   (testing (is (= 2 (:a-val *world*)))))
 
 ;; you run the defined flow via:
@@ -56,4 +57,3 @@
   (query-retries))
 
 (run-tests)
-

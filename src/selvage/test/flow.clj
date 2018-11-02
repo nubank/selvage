@@ -1,4 +1,5 @@
-(ns selvage.cflow
+(ns selvage.test.flow
+  "clojure.test version of the flow macro"
    (:require [schema.core :as s]
              [selvage.core :as core]
              [clojure.spec.test.alpha :as spec.test]

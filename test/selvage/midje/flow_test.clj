@@ -1,8 +1,8 @@
-(ns selvage.flow-test
+(ns selvage.midje.flow-test
   (:require [matcher-combinators.midje :refer [match]]
             [matcher-combinators.matchers :as m]
             [selvage.core :as core]
-            [selvage.flow :as f :refer [*flow* *world* flow tabular-flow]]
+            [selvage.midje.flow :as f :refer [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as emission.api]
             [midje.emission.state :as emission.states]
             [midje.repl :refer [last-fact-checked]]

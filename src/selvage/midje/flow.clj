@@ -1,4 +1,5 @@
-(ns selvage.flow
+(ns selvage.midje.flow
+  "midje version of the flow macro"
   (:require [selvage.core :as core]
             [selvage.visibility :as vis]
             [selvage.formatting :as formatting]

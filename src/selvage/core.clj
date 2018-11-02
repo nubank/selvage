@@ -96,8 +96,8 @@
   nil)
 
 (defn is-query? [form]
-  (or (-> form form->var meta :selvage.flow/query)
-      (-> form form->var meta :selvage.cflow/query)))
+  (or (-> form form->var meta :selvage.midje.flow/query)
+      (-> form form->var meta :selvage.test.flow/query)))
 
 (s/defn forms->steps :- [Step]
   [classify-fn, retry-fn, forms :- [Expression]]
