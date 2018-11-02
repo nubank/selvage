@@ -17,7 +17,7 @@
 (defn test-counter-reset [f]
   (let [output-counters-before @t/*report-counters*]
     (fn [& args]
-      ;; TODO reset counters correctly
+      (dosync (ref-set t/*report-counters* output-counters-before))
       (apply f args))))
 
 (defn retry [f]
