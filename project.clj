@@ -10,13 +10,13 @@
             [lein-ancient "0.6.15"]]
 
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [io.aviso/pretty "0.1.34"]
+                 [io.aviso/pretty "0.1.35"]
                  [com.fasterxml.jackson.core/jackson-databind "2.9.6"]
                  [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor "2.9.6"]
-                 [midje "1.9.3-alpha1" :exclusions [org.clojure/clojure]]
+                 [midje "1.9.4" :exclusions [org.clojure/clojure]]
                  [prismatic/schema "1.1.9"]
                  [com.google.guava/guava "23.0"]
                  [com.taoensso/timbre "4.10.0"]]
 
-  :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.3.1"]]}
+  :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.4.2"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}})
