@@ -3,10 +3,20 @@
             [clojure.test :refer :all]))
 
 (deftest a-test
+  (println "running a-test")
   (testing ":val is 0"
     (is (= 0 (:val *world*)))))
 
+
+(deftest b
+  (testing "foo"
+    (is (= 1 1))))
+(deftest c
+  (testing "foo"
+    (is (= 2 1))))
+
 (deftest b-test
+  (println "running b test")
   (testing ":val is 1"
     (is (= 1 (:val *world*)))))
 
@@ -24,7 +34,9 @@
 
   (fn [w] (println "BEFORE testing") w)
   (testing (is (= 1 (:a-val *world*))))
-  (fn [w] (println "AFTER testing") w))
+  (fn [w] (println "AFTER testing") w)
+  (testing "foo" (is (= 2 (:a-val *world*))))
+  )
 
 ;; you run the defined flow via:
 ;; (flow)
@@ -36,8 +48,10 @@
   (flow)
   (println "END test hook"))
 
-(run-tests)
+#_(binding [f/*quiet* true]
+  (run-tests))
 
+(run-tests)
 (comment
 (clojure.pprint/pprint
   (macroexpand
@@ -45,3 +59,4 @@
        (fn [w] (assoc w :val 0))
        a-test)))
 )
+

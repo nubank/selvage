@@ -1,6 +1,7 @@
 (ns selvage.flow-test
   (:require [matcher-combinators.midje :refer [match]]
             [matcher-combinators.matchers :as m]
+            [selvage.core :as core]
             [selvage.flow :as f :refer [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as emission.api]
             [midje.emission.state :as emission.states]
@@ -331,14 +332,14 @@
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+ test flow log" anything) => irrelevant
-               (f/emit-debug-ln anything anything) => irrelevant :times 3))
+               (core/emit-debug-ln #"Running flow: selvage.flow-test:\d+ test flow log" anything) => irrelevant
+               (core/emit-debug-ln anything anything) => irrelevant :times 3))
 
        (fact "when no test description is given"
              (flow (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+" anything) => irrelevant
-               (f/emit-debug-ln anything anything) => irrelevant :times 3)))
+               (core/emit-debug-ln #"Running flow: selvage.flow-test:\d+" anything) => irrelevant
+               (core/emit-debug-ln anything anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
   (macroexpand-1 '(flow "rataria" (fact 1 => 1)))
@@ -363,7 +364,7 @@
 
 (facts "future-fact"
   (let [future-check (atom [])]
-    (fact "common flow with future-fact"
+    (fact "core flow with future-fact"
       (flow
         (fact "First valid assertion"
           (swap! future-check conj :first) => [:first])
