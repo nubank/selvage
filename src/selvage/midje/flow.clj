@@ -70,10 +70,14 @@
        (-> form first name #{"future-fact" "future-facts"})))
 
 (defn- classify [form]
-  (cond (is-check? form)      [:check (check->fn-expr form) (fact-desc form)]
-        (is-future? form)     [:check (future->fn-expr form) (fact-desc form)]
-        (core/is-query? form) [:query (core/transition->fn-expr form) (str form)]
-        :else                 [:transition (core/transition->fn-expr form) (str form)]))
+  (cond (is-check? form)           [:check (check->fn-expr form) (fact-desc form)]
+        (is-future? form)          [:check (future->fn-expr form) (fact-desc form)]
+        (core/is-query? form)      [:query (core/transition->fn-expr form) (str form)]
+        (core/is-transition? form) [:transition
+                                    (core/transition->fn-expr form)
+                                    (str form)]
+        :else                      (throw (ex-info "unknown flow step type"
+                                                   {:form form}))))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?

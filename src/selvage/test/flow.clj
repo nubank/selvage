@@ -16,7 +16,10 @@
 
 (defn worlds [] (deref core/worlds-atom))
 
-(defn test-counter-reset [f]
+(defn- test-counter-reset
+  "Grab current test stats and return clojure that resets to those states and
+   runs function. Used for retrying function execution."
+  [f]
   (let [output-counters-before @t/*report-counters*]
     (fn [& args]
       (dosync (ref-set t/*report-counters* output-counters-before))
@@ -74,10 +77,20 @@
 
 (defn- classify [form]
   (cond
-    (is-testing? form)    [:check (-> form run-test-expr test->fn-expr) (str form)]
-    (is-test-var? form)   [:check (-> form run-test-var test->fn-expr) (str form)]
-    (core/is-query? form) [:query (core/transition->fn-expr form) (str form)]
-    :else                 [:transition (core/transition->fn-expr form) (str form)]))
+    (is-testing? form)         [:check
+                                (-> form run-test-expr test->fn-expr)
+                                (str form)]
+    (is-test-var? form)        [:check
+                                (-> form run-test-var test->fn-expr)
+                                (str form)]
+    (core/is-query? form)      [:query
+                                (core/transition->fn-expr form)
+                                (str form)]
+    (core/is-transition? form) [:transition
+                                (core/transition->fn-expr form)
+                                (str form)]
+    :else                      (throw (ex-info "unknown flow step type"
+                                               {:form form}))))
 
 (defmethod t/report ::flow [m]
   (t/with-test-out

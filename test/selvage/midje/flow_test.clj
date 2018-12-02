@@ -374,3 +374,14 @@
           (swap! future-check conj :third) => [:first :third])) => true)
     (fact "check future-fact pass through"
       @future-check => [:first :third])))
+
+(fact "binding *verbose* works"
+  (with-out-str
+    (binding [f/*verbose* false]
+      (flow "any name" (fact 1 => 1))))
+  => empty?
+
+  (with-out-str
+    (binding [f/*verbose* true]
+      (flow "any name" (fact 1 => 1))))
+  => (complement empty?))
