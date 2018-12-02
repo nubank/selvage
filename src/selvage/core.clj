@@ -7,7 +7,7 @@
 
 (def ^:dynamic *quiet* false)
 (def ^:dynamic *verbose* false)
-(def ^:dynamic *report-fail*)
+(def ^:dynamic *report-fail-fn*)
 
 (def worlds-atom (atom {}))
 
@@ -112,7 +112,7 @@
     (str "'" expr "'" line-info)))
 
 (defn fail [expr-str details & failure-messages]
-  (*report-fail*)
+  (*report-fail-fn*)
   [false (apply str "\033[0;33m  Step " expr-str " " details " \033[0m " failure-messages)])
 
 (defn valid-world-result [world expr-str]

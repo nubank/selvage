@@ -16,6 +16,8 @@
 (def ^:dynamic *probe-sleep-period* 10)
 (def ^:dynamic *world* {})
 (def ^:dynamic *flow* {})
+(def ^:dynamic *verbose* false)
+(def ^:dynamic *report-fail*)
 
 (defn worlds [] (deref core/worlds-atom))
 
@@ -121,11 +123,12 @@
                 in-forms
                 flow-description]} (get-flow-information forms (meta &form))]
     (wrap-with-metadata flow-description
-                        `(binding [*flow*         {:name  ~flow-name
-                                                   :title ~flow-title}
-                                   core/*report-fail* #(emission.state/output-counters:inc:midje-failures!)
-                                   core/*quiet* (not (emission.api/config-above?
-                                                        :print-nothing))]
+                        `(binding [*flow*                 {:name  ~flow-name
+                                                           :title ~flow-title}
+                                   core/*report-fail-fn* #(emission.state/output-counters:inc:midje-failures!)
+                                   core/*verbose*        *verbose*
+                                   core/*quiet*          (not (emission.api/config-above?
+                                                                 :print-nothing))]
                            (with-cid
                              (core/announce-flow ~flow-description)
                              (->> (list ~@(core/forms->steps classify retry in-forms))

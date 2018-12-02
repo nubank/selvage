@@ -10,6 +10,7 @@
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
+(def ^:dynamic *verbose* false)
 (def ^:dynamic *world* {})
 (def ^:dynamic *flow* {})
 
@@ -126,7 +127,8 @@
     `(do (~`t/deftest ~name
                       (spec.test/instrument)
                       (s/with-fn-validation
-                        (binding [core/*report-fail* #(t/inc-report-counter :fail)]
+                        (binding [core/*report-fail-fn* #(t/inc-report-counter :error)
+                                  core/*verbose*        *verbose*]
                           (with-cid
                             (core/announce-flow ~flow-description)
                             (->> (list ~@(core/forms->steps classify retry in-forms))
