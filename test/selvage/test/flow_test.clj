@@ -22,18 +22,6 @@
   (testing ":val is 0"
     (is (= 0 (:val *world*)))))
 
-(deftest b
-  (testing "foo"
-    (is (= 1 1))))
-(deftest c
-  (testing "foo"
-    (is (= 2 1))))
-
-(deftest b-test
-  (println "running b test")
-  (testing ":val is 1"
-    (is (= 1 (:val *world*)))))
-
 (defn a-step [w]
   (assoc w :a-val 1))
 
@@ -85,20 +73,20 @@
   (fn [w] (assoc w :query-count (atom 0)))
   (testing (is (= @(:query-count *world*)
                   0)))
-  (fn [w] ;; break the retry seq with a transistion
-    w)
+  (fn [w] w) ;; break the retry seq with a transistion
 
   (f/fnq [w] {:x (swap! (:query-count w) inc)})
   (testing (is (match? *world*
                        {:x 3}))))
 
-;; you can set the test runner to only run `defflow`s and not `deftest`s
-;; ideally this will be done more or less automatically
-(defn test-ns-hook []
-  (failing-flow-fails)
-  (error-flow-errors-out)
-  (query-retries)
-  (verbose-behaviour)
-  (flow-with-bad-transition-fails-at-expand))
+;; helper to register tests to run via test-ns-hook
+;; if you do (register-flows), it registers all `defflows`, but not `deftest`s
+;; since this namespace mixes flows and normal tests, we provide a whitelist
+(f/register-flows
+  failing-flow-fails
+  error-flow-errors-out
+  query-retries
+  verbose-behaviour
+  flow-with-bad-transition-fails-at-expand)
 
 (run-tests)
