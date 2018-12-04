@@ -157,14 +157,16 @@
   `(def ~(with-meta name {::query true}) (fn ~@forms)))
 
 (defn register-flows-helper
-  ([]
-   (register-flows-helper (->> *ns* ns-publics vals (filter (comp :flow meta)))))
-  ([flow-vars]
-   (let [sorted-flow-vars (sort-by #(-> % meta :line) flow-vars)]
-     (println sorted-flow-vars)
-     (intern *ns*
-             'test-ns-hook
-             (fn [] (run! #(apply % nil) sorted-flow-vars))))))
+  [filtered-flows]
+  (let [filtered-flows-set (set filtered-flows)
+        all-test-vars      (->> *ns* ns-publics vals)
+        filter-fn          (or (and (seq filtered-flows)
+                                    (fn [vr] (filtered-flows-set (-> vr meta :name))))
+                               (comp :flow meta))
+        sorted-flow-vars   (->> all-test-vars
+                                (filter filter-fn)
+                                (sort-by #(-> % meta :line)))]
+    (fn [] (run! #(apply % nil) sorted-flow-vars))))
 
-(defmacro register-flows [& args]
-  `(apply register-flows-helper (map resolve ~args)))
+(defmacro register-flows [& body]
+  `(def ~'test-ns-hook ~(register-flows-helper body)))
