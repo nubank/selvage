@@ -155,3 +155,16 @@
 
 (defmacro defnq [name & forms]
   `(def ~(with-meta name {::query true}) (fn ~@forms)))
+
+(defn register-flows-helper
+  ([]
+   (register-flows-helper (->> *ns* ns-publics vals (filter (comp :flow meta)))))
+  ([flow-vars]
+   (let [sorted-flow-vars (sort-by #(-> % meta :line) flow-vars)]
+     (println sorted-flow-vars)
+     (intern *ns*
+             'test-ns-hook
+             (fn [] (run! #(apply % nil) sorted-flow-vars))))))
+
+(defmacro register-flows [& args]
+  `(apply register-flows-helper (map resolve ~args)))
