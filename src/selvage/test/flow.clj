@@ -16,6 +16,32 @@
 
 (defn worlds [] (deref core/worlds-atom))
 
+(def ^:dynamic *intermediate-report*)
+
+(defn diff-test-result
+  "Subtract two clojure.test style summary maps."
+  [before after]
+  {:pass  (apply - (map :pass [after before]))
+   :error (apply - (map :error [after before]))
+   :test  (apply - (map :test [after before]))
+   :fail  (apply - (map :fail [after before]))})
+
+(defn report-count []
+  (diff-test-result *intermediate-report* @t/*report-counters*))
+
+(defn update-report-counters [new-reports]
+  (when t/*report-counters*
+    (dosync (commute t/*report-counters*
+                     (fn [current-counters] (merge-with + current-counters new-reports))))))
+
+(defmacro with-report-counters
+  [& body]
+  `(update-report-counters
+     (binding [*intermediate-report* (or (some-> t/*report-counters* deref) ~t/*initial-report-counters*)]
+       (binding [t/*report-counters* (ref *intermediate-report*)]
+         ~@body
+         (diff-test-result *intermediate-report* @t/*report-counters*)))))
+
 (defn- test-counter-reset
   "Grab current test stats and return clojure that resets to those states and
    runs function. Used for retrying function execution."
@@ -144,9 +170,10 @@
                                   core/*verbose*        *verbose*]
                           (with-cid
                             (core/announce-flow ~flow-description)
-                            (->> (list ~@(core/forms->steps classify retry in-forms))
-                                 core/run-steps
-                                 (announce-results ~flow-description)))))
+                            (with-report-counters
+                              (->> (list ~@(core/forms->steps classify retry in-forms))
+                                   core/run-steps
+                                   (announce-results ~flow-description))))))
                       (spec.test/unstrument))
       (alter-meta! (var ~name) assoc :flow true))))
 
