@@ -121,7 +121,12 @@
      :flow-title       flow-title
      :in-forms         in-forms}))
 
-(defmacro flow [& forms]
+(defmacro flow
+  "Defines a flow test.
+  The body follows a world-transition system, where each expression is either a
+  world-transition, a check, or a query. Checks and queries will be retried
+  when checks fail."
+  [& forms]
   (let [{:keys [flow-name
                 flow-title
                 in-forms

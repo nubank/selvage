@@ -88,5 +88,3 @@
   query-retries
   verbose-behaviour
   flow-with-bad-transition-fails-at-expand)
-
-(run-tests)

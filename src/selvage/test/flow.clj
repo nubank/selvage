@@ -123,17 +123,16 @@
     (case (:status m)
       :pass (t/inc-report-counter :pass)
       :fail (do (t/inc-report-counter :fail)
-                (println "\n" (:flow m) "failed"))
-      ;; TODO error case
-      (println "unexpected report status"))))
+                (println "\n" (:flow m) "failed")))))
 
 (defn announce-results [flow-description [success? desc]]
   (core/emit-debug-ln (str "Flow " flow-description " finished"
                              (if success?
                                " successfully"
-                               " with failures") "\n") {:flow-description flow-description
-                                              :log              :flow/finish
-                                              :success?         (boolean success?)})
+                               " with failures") "\n")
+                      {:flow-description flow-description
+                       :log              :flow/finish
+                       :success?         (boolean success?)})
   (let [report (if (boolean success?)
                  {:type ::flow :status :pass :flow flow-description}
                  {:type ::flow :status :fail :flow flow-description})]
@@ -159,7 +158,14 @@
      :flow-title       flow-title
      :in-forms         in-forms}))
 
-(defmacro defflow [name & forms]
+(defmacro defflow
+  "Define a flow test function that accepts no arguments.
+  The body follows a world-transition system, where each expression is either a
+  world-transition, a check, or a query. Checks and queries will be retried
+  when checks fail."
+  {:arglists '([name & body]
+               [name description & body])}
+  [name & forms]
   (let [{:keys [flow-title
                 in-forms
                 flow-description]} (get-flow-information name forms (meta &form))]
@@ -195,5 +201,12 @@
                                 (sort-by #(-> % meta :line)))]
     (fn [] (run! #(apply % nil) sorted-flow-vars))))
 
-(defmacro register-flows [& body]
+(defmacro register-flows
+  "Finds all `defflow`s in the invoked namespace and registers them for
+  `clojure.test` running via `test-ns-hook`.
+
+  Optionally accepts `defflow` or `defftest` vars as arguments, and when
+  provied, will only register those. This is a way to mix to test types
+  registered."
+  [& body]
   `(def ~'test-ns-hook ~(register-flows-helper body)))
