@@ -1,4 +1,4 @@
-(defproject nubank/selvage "0.0.1"
+(defproject nubank/selvage "1.0.0-BETA"
   :description "Macro for writing tests in world-transition pattern"
   :url "https://github.com/nubank/selvage"
   :license {:name "Apache License, Version 2.0"}
@@ -37,9 +37,10 @@
                  [com.google.guava/guava "23.0"]
                  [com.taoensso/timbre "4.10.0"]]
 
-  :profiles {:dev {:dependencies [[nubank/matcher-combinators "0.4.2"]]}
-             :kaocha {:dependencies [[lambdaisland/kaocha "0.0-248"]]}
-             :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}}
+  :profiles {:dev    {:dependencies [[nubank/matcher-combinators "0.4.2"]
+                                     [eftest "0.5.4"]]}
+             :kaocha {:dependencies [[lambdaisland/kaocha "0.0-313"]]}
+             :1.8    {:dependencies [[org.clojure/clojure "1.8.0"]]}}
 
   :aliases {"run-dev"         ["with-profile" "+repl-start" "trampoline" "repl" ":headless"]
             "run-dev-notramp" ["with-profile" "+repl-start" "repl" ":headless"]
