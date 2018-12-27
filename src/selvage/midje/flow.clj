@@ -144,10 +144,16 @@
                                   core/run-steps
                                   (announce-results ~flow-description)))))))
 
-(defmacro ^::query fnq [& forms]
+(defmacro ^::query fnq
+  "Defines an anonymous retriable flow step. The flow will retry such steps
+  adjacent checks fails."
+  [& forms]
   `(fn ~@forms))
 
-(defmacro defnq [name & forms]
+(defmacro defnq
+  "Defines a retriable flow step. The flow will retry such steps adjacent
+  checks fails."
+  [name & forms]
   `(def ~(with-meta name {::query true}) (fn ~@forms)))
 
 (defmacro tabular-flow [flow & table]
