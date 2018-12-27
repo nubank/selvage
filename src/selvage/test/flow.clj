@@ -6,7 +6,7 @@
              [clojure.test :as t]
              [selvage.visibility :as vis]
              [taoensso.timbre :as timbre])
-  (:import [java.io ByteArrayOutputStream PrintStream StringWriter]))
+  (:import [java.io StringWriter]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -70,6 +70,13 @@
 (defn run-test-var [test-var]
   `(fn [] (t/test-var (var ~test-var))))
 
+(defn run-check-var [test-var]
+  `(fn []
+     (let [meta#     (meta (var ~test-var))
+           test-fn#  (::check meta#)
+           test-var# (with-meta ~test-var (assoc meta# :test test-fn#))]
+       (t/test-var test-var#))))
+
 (defn run-test-expr [testing-expr]
   `(fn [] (do ~testing-expr)))
 
@@ -94,10 +101,12 @@
 (defn- is-test-var? [form]
   (and (symbol? form)
        (-> form resolve meta :test)))
+
+(defn- is-check-var? [form]
+  (and (symbol? form)
+       (-> form resolve meta ::check)))
+
 (defn- is-testing? [form]
-  (and (coll? form)
-       (-> form first name (= "testing"))))
-(defn- is-check-ref? [form]
   (and (coll? form)
        (-> form first name (= "testing"))))
 
@@ -105,6 +114,9 @@
   (cond
     (is-testing? form)         [:check
                                 (-> form run-test-expr test->fn-expr)
+                                (str form)]
+    (is-check-var? form)       [:check
+                                (-> form run-check-var test->fn-expr)
                                 (str form)]
     (is-test-var? form)        [:check
                                 (-> form run-test-var test->fn-expr)
@@ -195,24 +207,8 @@
   [name & forms]
   `(def ~(with-meta name {::query true}) (fn ~@forms)))
 
-(defn register-flows-helper
-  [filtered-flows]
-  (let [filtered-flows-set (set filtered-flows)
-        all-test-vars      (->> *ns* ns-publics vals)
-        filter-fn          (or (and (seq filtered-flows)
-                                    (fn [vr] (filtered-flows-set (-> vr meta :name))))
-                               (comp :flow meta))
-        sorted-flow-vars   (->> all-test-vars
-                                (filter filter-fn)
-                                (sort-by #(-> % meta :line)))]
-    (fn [] (run! #(apply % nil) sorted-flow-vars))))
-
-(defmacro register-flows
-  "Finds all `defflow`s in the invoked namespace and registers them for
-  `clojure.test` running via `test-ns-hook`.
-
-  Optionally accepts `defflow` or `defftest` vars as arguments, and when
-  provied, will only register those. This is a way to mix to test types
-  registered."
-  [& body]
-  `(def ~'test-ns-hook ~(register-flows-helper body)))
+(defmacro defcheck
+  "Similar to `deftest` but to be used inside of `defflow` tests"
+  [name & forms]
+  `(def ~(vary-meta name assoc ::check `(fn [] ~@forms))
+     (fn [] (println "Checks cannot be run outside of a flow"))))
