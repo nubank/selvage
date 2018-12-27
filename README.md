@@ -7,7 +7,7 @@ Integration testing at the edges of a microservice.
 
 ### What are selvage tests?
 
-Selvage tests are integration-style tests for a single service that use the [`flow`](https://github.com/nubank/selvage/blob/master/src/selvage/flow.clj#L216-L226) macro.
+Selvage tests are integration-style tests for a single service that use the flow macro.
 The entry point for selvage tests are the endpoints of the service: http handlers and kafka consumers.
 Hence, all internal service code remains un-mocked, but external communications with HTTP, kafka, and other components like S3, redis, etc, are mocked.
 
@@ -16,6 +16,13 @@ Flows follow a world-transition pattern. The flow starts with a base world state
 Given that service code isn't mocked in selvage tests, schema validation is enabled by default within the `flow` macro.
 
 The flow structure can also be the basis for end-to-end (`e2e`) style tests. In the case of `e2e` tests, incoming/outgoing correspondences aren't mocked, so flow transitions make can send HTTP requests or produce kafka messages that will be processed by fully spun up services.
+
+### backing test-framework
+
+Flows make use of a host test-framework to assert checks over the state of the world. Currently two test-frameworks are supported:
+
+ * `Midje` via the `flow` macro in the `selvage.midje.flow` namespace
+ * `clojure.test` via the `defflow` macro in the `selvage.test.flow` namespace
 
 ### system components
 
@@ -35,13 +42,71 @@ The world is a map that stores:
 
  * __Transition functions__: a 1-arity function that must take in a world and return a world. They generally have side-effects, store results under keys for checking, and by principal avoid mocking as much as possible.
  * __Checks__: are Midje `fact` or `facts` expressions that should perform checks over values stored in the world. Since facts don't modify the world, or accept a world argument, the world is made available within facts via the `*world*` dynamic variable. Checks are retriable; the `flow` macro will re-run checks that fail until they succeed or a timeout is reached.
- * __Query functions__: retriable transition functions defined using [`postman.flow/defnq`](https://github.com/nubank/selvage/blob/master/src/selvage/flow.clj#L228-L232) and `fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
+ * __Query functions__: retriable transition functions defined using `selvage.midje.flow/defnq` and `selvage.midje.flow/fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
 
-### simple example
+### simple `clojure.test` example
 
 ```clojure
-(ns postman.example
-  (:require [postman.flow :refer [*world* flow]]
+(ns selvage.clojure-test-example
+  (:require [selvage.test.selvage :refer [*world* defcheck defflow]]
+            [my-mocks.http :refer [GET]]
+            [my-mocks.kafka.mock-consumer :as kafka.mock-consumer]
+            [my-service.components :as components]))
+
+(defn init!
+  "setup components and store them in the world"
+  [world]
+  (let [system (components/ensure-system-up!)]
+    ;; .. code to setup kafka, http, etc services ..
+    (assoc world :system system)))
+
+(defn load-bill
+  "Hit service's endpoint to access bill data"
+  [bill-id world]
+  (let [url (str "/admin/bill/" id "/")]
+    (assoc world :bill (GET :json url 200))))
+
+(defcheck check-loaded-bill-total
+  (is (= 1 (-> *world* :bill :total))))
+
+(defflow "simple clojure.test backed flow"
+  ;; the world starts out as an empty map: {}
+
+  ;; transition step that initializes the system components and store them in the world
+  init!
+
+  ;; transition step that triggers service code via an http endpoint
+  (partial load-bill #uuid "3290571d-09c3-4f08-99ec-a0bad7c4c546")
+
+  ;; inline check step
+  (testing "check the loaded bill name"
+    (is (= "Radhia Cousot"
+           (-> *world* :bill :name))))
+
+  ;; check step defined outside of the flow
+  check-loaded-bill-total
+
+  ;; transition step that triggers service code via kafka message consumption
+  (fn [world]
+    (let [message  {:topic   :publish-bill
+                    :message {:total 2
+                              :name  "Radhia Cousot"}}
+          consumer (-> world :system :consumer)]
+      (kafka.mock-consumer/consume! message))
+      ;; don't forget that transition steps always return a world
+      world)
+
+  ;; consuming a message doesn't return anything, but we can check behavior by
+  ;; checking messages produced, outgoing http calls, and updated results from
+  ;; subsequent incoming http calls
+  ...)
+```
+
+### simple Midje example
+
+```clojure
+(ns selvage.midje-example
+  (:require [selvage.midje.flow :refer [*world* flow]]
             [my-mocks.http :refer [GET]]
             [my-mocks.kafka.mock-consumer :as kafka.mock-consumer]
             [my-service.components :as components]))
@@ -97,7 +162,7 @@ When one step in a sequence fails, the entire sequence will be retried.
 This allows for nice probing behavior:
 
 ```clojure
-(require '[postman.flow :refer [flow fnq]]
+(require '[selvage.midje.flow :refer [flow fnq]]
 (def counter (atom 0))
 
 (flow "query / check probing example"
