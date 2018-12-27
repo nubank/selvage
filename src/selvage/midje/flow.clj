@@ -86,8 +86,8 @@
                              (if success?
                                " successfully"
                                " with failures") "\n") {:flow-description flow-description
-                                              :log              :flow/finish
-                                              :success?         (boolean success?)})
+                                                        :log              :flow/finish
+                                                        :success?         (boolean success?)})
   (boolean success?))
 
 (defn wrap-with-metadata [flow-name flow-expr]
