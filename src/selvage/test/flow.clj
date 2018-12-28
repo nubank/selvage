@@ -124,11 +124,9 @@
     (core/is-query? form)      [:query
                                 (core/transition->fn-expr form)
                                 (str form)]
-    (core/is-transition? form) [:transition
+    :else                      [:transition
                                 (core/transition->fn-expr form)
-                                (str form)]
-    :else                      (throw (ex-info "unknown flow step type"
-                                               {:form form}))))
+                                (str form)]))
 
 (defmethod t/report ::flow [m]
   (t/with-test-out

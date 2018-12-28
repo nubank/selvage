@@ -99,16 +99,6 @@
   (or (-> form form->var meta :selvage.midje.flow/query)
       (-> form form->var meta :selvage.test.flow/query)))
 
-(defn is-transition? [form]
-  (or (and (symbol? form)
-           (-> form resolve ifn?))
-      (and (coll? form)
-           (or (let [head-form (-> form first name)]
-                 (or (= head-form "fn*")
-                     (= head-form "fn")))
-               (and (-> form first resolve meta :macro)
-                    (is-transition? (macroexpand form)))))))
-
 (s/defn forms->steps :- [Step]
   [classify-fn, retry-fn, forms :- [Expression]]
   (->> forms (map classify-fn) (retry-sequences retry-fn) seq))

@@ -60,9 +60,6 @@
   (fn [w] (throw (ex-info "foo" {:bar 'baz}))))
 (hide-test-from-runner! #'error-flow)
 
-(deftest flow-with-bad-transition-fails-at-expand
-  (is (thrown? ExceptionInfo (macroexpand `(defflow bad-transition 1)))))
-
 (deftest error-flow-errors-out
   "Flow that errors out registers as error"
   (let [test-result (capture-test-stats (var error-flow))]

@@ -73,11 +73,9 @@
   (cond (is-check? form)           [:check (check->fn-expr form) (fact-desc form)]
         (is-future? form)          [:check (future->fn-expr form) (fact-desc form)]
         (core/is-query? form)      [:query (core/transition->fn-expr form) (str form)]
-        (core/is-transition? form) [:transition
+        :else                      [:transition
                                     (core/transition->fn-expr form)
-                                    (str form)]
-        :else                      (throw (ex-info "unknown flow step type"
-                                                   {:form form}))))
+                                    (str form)]))
 
 (defn announce-results [flow-description [success? desc]]
   (when-not success?
