@@ -157,16 +157,31 @@
 
 (defn get-flow-information
   [flow-name forms metadata]
-  (let [[flow-title in-forms] (if (string? (first forms))
+  (let [[options rest-forms] (if (map? (first forms))
                                 [(first forms) (rest forms)]
-                                [nil forms])
+                                [{} forms])
+        [flow-title in-forms] (if (string? (first rest-forms))
+                                [(first rest-forms) (rest rest-forms)]
+                                [nil rest-forms])
         full-name             (str (ns-name *ns*) "/" flow-name ":" (:line metadata))
         flow-description      (if flow-title
                                 (str full-name " \"" flow-title "\"")
                                 full-name)]
     {:flow-description flow-description
      :flow-title       flow-title
-     :in-forms         in-forms}))
+     :in-forms         in-forms
+     :options          options}))
+
+(defn flow-runner [in-forms flow-description]
+  `(fn []
+     (binding [core/*report-fail-fn* #(t/inc-report-counter :error)
+               core/*verbose*        *verbose*]
+       (with-cid
+         (core/announce-flow ~flow-description)
+         (with-report-counters
+           (->> (list ~@(core/forms->steps classify retry in-forms))
+                core/run-steps
+                (announce-results ~flow-description)))))))
 
 (defmacro defflow
   "Define a flow test function that accepts no arguments.
@@ -178,19 +193,18 @@
   [name & forms]
   (let [{:keys [flow-title
                 in-forms
-                flow-description]} (get-flow-information name forms (meta &form))]
+                options
+                flow-description]} (get-flow-information name forms (meta &form))
+        wrapper (or (:wrapper-fn options)
+                    (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
-                      (spec.test/instrument)
-                      (s/with-fn-validation
-                        (binding [core/*report-fail-fn* #(t/inc-report-counter :error)
-                                  core/*verbose*        *verbose*]
-                          (with-cid
-                            (core/announce-flow ~flow-description)
-                            (with-report-counters
-                              (->> (list ~@(core/forms->steps classify retry in-forms))
-                                   core/run-steps
-                                   (announce-results ~flow-description))))))
-                      (spec.test/unstrument))
+                      (try
+                        (spec.test/instrument)
+                        (s/with-fn-validation
+                          (~wrapper
+                            ~(flow-runner in-forms flow-description)))
+                      (finally
+                        (spec.test/unstrument))))
       (alter-meta! (var ~name) assoc :flow true))))
 
 (defmacro ^::query fnq

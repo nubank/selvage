@@ -81,8 +81,15 @@
                  (basic-flow)))))))
 
 
+(def ^:dynamic *a-value* nil)
+
+(defflow wrapping-flow-in-binding
+  {:wrapper-fn (fn [x] (binding [*a-value* 1] (x)))}
+  "Run the test but insided the `wrapper-fn`"
+  (testing (is (= *a-value* 1))))
+
 (defflow query-retries
-  "retyring query steps doesn't mess with test pass count"
+  "retrying query steps doesn't mess with test pass count"
   (fn [w] (assoc w :query-count (atom 0)))
   (testing (is (= @(:query-count *world*)
                   0)))
