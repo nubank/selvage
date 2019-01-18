@@ -88,13 +88,30 @@
   "Run the test but insided the `wrapper-fn`"
   (testing (is (= *a-value* 1))))
 
+(f/defnq named-query [world]
+  (assoc world :x (swap! (:named-query-count world) inc)))
+
 (defflow query-retries
   "retrying query steps doesn't mess with test pass count"
-  (fn [w] (assoc w :query-count (atom 0)))
-  (testing (is (= @(:query-count *world*)
-                  0)))
+  (fn [w]
+    (assoc w
+           :named-query-count (atom 0)
+           :anon-query-count (atom 0)))
+
+  (testing
+    (is (= 0
+           @(:named-query-count *world*)))
+    (is (= 0
+           @(:anon-query-count *world*))))
+
   (fn [w] w) ;; break the retry seq with a transistion
 
-  (f/fnq [w] {:x (swap! (:query-count w) inc)})
-  (testing (is (match? *world*
-                       {:x 3}))))
+  named-query
+  (f/fnq [w]
+         (println "query")
+         (assoc w :y (swap! (:anon-query-count w) inc)))
+  (testing
+    (is (match? {:y 3}
+                *world*))
+    (is (match? {:y 3}
+                *world*))))
