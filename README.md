@@ -197,3 +197,32 @@ This allows for nice probing behavior:
  * `*probe-sleep-period*`: time in milliseconds to wait before retrying a query or check step.
  * `*verbose*`: controls whether the step should be logged to stdout and splunk.
  * `*world*`: the current world, which is made available within check steps.
+
+#### Using bindings with Midje
+
+```clojure
+(ns selvage.midje-binding-example
+  (:require [selvage.midje.flow :refer [*world* *verbose* flow]]
+
+(binding [*verbose* true]
+  (flow "setting *verbose* with midje flow"
+    (fact "inside the flow *verbose* is set to true"
+      *verbose* => true)))
+```
+
+#### Using bindings with clojure.test
+
+```clojure
+(ns selvage.clojure-test-binding-example
+  (:require [selvage.test.flow :refer [*world* *verbose* defflow]]
+
+(defn example-wrapper [flow]
+  (binding [*verbose* true]
+    (flow)))
+
+(defflow "using binding with defflow requires a wrapper"
+  {:wrapper-fn example-wrapper}
+
+  (testing "given the provided wrapper function, *verbose* is set to true"
+    (is (= true *verbose*))))
+```
