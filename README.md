@@ -43,7 +43,7 @@ The world is a map that stores:
 
  * __Transition functions__: a 1-arity function that must take in a world and return a world. They generally have side-effects, store results under keys for checking, and by principal avoid mocking as much as possible.
  * __Checks__: are Midje `fact` or `facts` expressions that should perform checks over values stored in the world. Since facts don't modify the world, or accept a world argument, the world is made available within facts via the `*world*` dynamic variable. Checks are retriable; the `flow` macro will re-run checks that fail until they succeed or a timeout is reached.
- * __Query functions__: retriable transition functions defined using `selvage.midje.flow/defnq` and `selvage.midje.flow/fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
+ * __Query functions__: retriable transition functions defined using `selvage.{midje|test}.flow/defnq` and `selvage.{midje|test}.flow/fnq`. If running the function fails, it will be retried. This functionality is generally only used in flows for end-to-end tests, when you want to get data from a potentially flaky source like over http.
 
 ### simple `clojure.test` example
 
