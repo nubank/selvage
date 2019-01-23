@@ -1,7 +1,8 @@
-(ns selvage.flow-test
+(ns selvage.midje.flow-test
   (:require [matcher-combinators.midje :refer [match]]
             [matcher-combinators.matchers :as m]
-            [selvage.flow :as f :refer [*flow* *world* flow tabular-flow]]
+            [selvage.core :as core]
+            [selvage.midje.flow :as f :refer [*flow* *world* flow tabular-flow]]
             [midje.emission.api :as emission.api]
             [midje.emission.state :as emission.states]
             [midje.repl :refer [last-fact-checked]]
@@ -39,11 +40,11 @@
 
 (fact "it exposes flow information"
       (flow
-       (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
+       (fact *flow* => (match {:name  #(re-find #"selvage.midje.flow-test\:\d+" %)
                                :title nil}))) => true
 
       (flow "title"
-            (fact *flow* => (match {:name  #(re-find #"selvage.flow-test\:\d+" %)
+            (fact *flow* => (match {:name  #(re-find #"selvage.midje.flow-test\:\d+" %)
                                     :title "title"}))) => true)
 
 (fact "embedding tests"
@@ -331,14 +332,14 @@
        (fact "when a test description is given"
              (flow "test flow log" (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+ test flow log" anything) => irrelevant
-               (f/emit-debug-ln anything anything) => irrelevant :times 3))
+               (core/emit-debug-ln #"Running flow: selvage.midje.flow-test:\d+ test flow log" anything) => irrelevant
+               (core/emit-debug-ln anything anything) => irrelevant :times 3))
 
        (fact "when no test description is given"
              (flow (fact 1 => 1)) => irrelevant
              (provided
-               (f/emit-debug-ln #"Running flow: selvage.flow-test:\d+" anything) => irrelevant
-               (f/emit-debug-ln anything anything) => irrelevant :times 3)))
+               (core/emit-debug-ln #"Running flow: selvage.midje.flow-test:\d+" anything) => irrelevant
+               (core/emit-debug-ln anything anything) => irrelevant :times 3)))
 
 (fact "wrap flow forms inside fact with metadata"
   (macroexpand-1 '(flow "rataria" (fact 1 => 1)))
@@ -347,7 +348,7 @@
              (m/embeds
                (list 'midje.sweet/facts
                      :selvage
-                     #(re-find #"selvage.flow-test:[0-9]+ rataria" %))))))
+                     #(re-find #"selvage.midje.flow-test:[0-9]+ rataria" %))))))
 
 (facts "Tabular works as expected"
        (emission.api/silently
@@ -363,7 +364,7 @@
 
 (facts "future-fact"
   (let [future-check (atom [])]
-    (fact "common flow with future-fact"
+    (fact "core flow with future-fact"
       (flow
         (fact "First valid assertion"
           (swap! future-check conj :first) => [:first])
@@ -373,3 +374,14 @@
           (swap! future-check conj :third) => [:first :third])) => true)
     (fact "check future-fact pass through"
       @future-check => [:first :third])))
+
+(fact "binding *verbose* works"
+  (with-out-str
+    (binding [f/*verbose* false]
+      (flow "any name" (fact 1 => 1))))
+  => empty?
+
+  (with-out-str
+    (binding [f/*verbose* true]
+      (flow "any name" (fact 1 => 1))))
+  => (complement empty?))
