@@ -226,3 +226,14 @@ This allows for nice probing behavior:
   (testing "given the provided wrapper function, *verbose* is set to true"
     (is (= true *verbose*))))
 ```
+### Editor Integration
+
+#### Emacs / Cider
+
+In order to run tests defined via the `defflow` macro in
+[Cider](https://cider.readthedocs.io/en/latest/running_tests/), the
+`defflow` symbol can be added to the `cider-test-defining-forms` list.
+
+```emacs-lisp
+(add-to-list 'cider-test-defining-forms "defflow")
+```
