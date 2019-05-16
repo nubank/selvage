@@ -9,25 +9,24 @@
   (Thread/sleep 1000)
   (update world :message #(str % " world!")))
 
-(binding [*load-flow* true]
+(binding [*load-flow* false]
   (flow "testing"
         (partial add-hello)
         (partial add-world)
         (fact "making sure"
               *world* => {:message "Hello world"})))
 
-#_(binding [*load-flow* false]
+(binding [*load-flow* false]
   (flow "testing again"
         (partial add-hello)
         (partial add-world)
         (fact "making sure"
               *world* => {:message "Hello world"})))
 
-#_(time
+(time
  (->> *ns*
-          ns-map
-          vals
-          (filter #(:test (meta %)))
-#_          (map (partial clojure.test/test-var))
-#_          doall
-          ))
+      ns-map
+      vals
+      (filter #(:test (meta %)))
+      (pmap (partial clojure.test/test-var))
+      doall))

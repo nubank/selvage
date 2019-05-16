@@ -149,11 +149,12 @@
   world-transition, a check, or a query. Checks and queries will be retried
   when checks fail."
   [& forms]
-  (if *load-flow*
-     (apply define-flow &form forms)
-     `(def ~(vary-meta 'my-flow assoc :test `(fn []
-                                             ~(apply define-flow &form forms)))
-       (fn []))))
+  `(if *load-flow*
+     ~(apply define-flow &form forms)
+     (def ~(vary-meta (gen-var-name &form)
+                       assoc :test `(fn []
+                                      ~(apply define-flow &form forms)))
+        (fn []))))
 
 (defmacro ^::query fnq
   "Defines an anonymous retriable flow step. The flow will retry such steps
