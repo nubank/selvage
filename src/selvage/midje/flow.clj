@@ -12,6 +12,8 @@
   (:import [clojure.lang ISeq Symbol]
            [java.io ByteArrayOutputStream PrintStream StringWriter]))
 
+(def ^:dynamic *load-flow* true)
+
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
 (def ^:dynamic *world* {})
@@ -119,16 +121,11 @@
      :flow-title       flow-title
      :in-forms         in-forms}))
 
-(defmacro flow
-  "Defines a flow test.
-  The body follows a world-transition system, where each expression is either a
-  world-transition, a check, or a query. Checks and queries will be retried
-  when checks fail."
-  [& forms]
+(defn define-flow [raw-form & forms]
   (let [{:keys [flow-name
                 flow-title
                 in-forms
-                flow-description]} (get-flow-information forms (meta &form))]
+                flow-description]} (get-flow-information forms (meta raw-form))]
     (wrap-with-metadata flow-description
                         `(binding [*flow*                 {:name  ~flow-name
                                                            :title ~flow-title}
@@ -141,6 +138,22 @@
                              (->> (list ~@(core/forms->steps classify retry in-forms))
                                   core/run-steps
                                   (announce-results ~flow-description)))))))
+
+(defn gen-var-name [raw-form]
+  (symbol (str "flow-" (:line (meta raw-form))))
+  )
+
+(defmacro flow
+  "Defines a flow test.
+  The body follows a world-transition system, where each expression is either a
+  world-transition, a check, or a query. Checks and queries will be retried
+  when checks fail."
+  [& forms]
+  (if *load-flow*
+     (apply define-flow &form forms)
+     `(def ~(vary-meta 'my-flow assoc :test `(fn []
+                                             ~(apply define-flow &form forms)))
+       (fn []))))
 
 (defmacro ^::query fnq
   "Defines an anonymous retriable flow step. The flow will retry such steps
