@@ -4,9 +4,10 @@
              [selvage.core :as core]
              [clojure.spec.test.alpha :as spec.test]
              [clojure.test :as t]
+             [visual-flow.core :as flow-tracker]
              [selvage.visibility :as vis]
              [taoensso.timbre :as timbre])
-  (:import [java.io StringWriter]))
+   (:import [java.io StringWriter]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -199,13 +200,16 @@
                     (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
                       (try
+                        (flow-tracker/setup  (str (java.util.UUID/randomUUID)) "hardcoded title")
                         (spec.test/instrument)
                         (s/with-fn-validation
                           (~wrapper
                             ~(flow-runner in-forms flow-description)))
                       (finally
+                        (flow-tracker/post-steps-hook)
+                        (flow-tracker/teardown)
                         (spec.test/unstrument))))
-      (alter-meta! (var ~name) assoc :flow true))))
+         (alter-meta! (var ~name) assoc :flow true))))
 
 (defmacro ^::query fnq
   "Defines an anonymous retriable flow step. The flow will retry such steps
