@@ -200,7 +200,7 @@
                     (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
                       (try
-                        (flow-tracker/setup  (str (java.util.UUID/randomUUID)) "hardcoded title")
+                        (flow-tracker/setup  (str ~name) "hardcoded title")
                         (spec.test/instrument)
                         (s/with-fn-validation
                           (~wrapper
