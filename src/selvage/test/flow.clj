@@ -4,7 +4,7 @@
              [selvage.core :as core]
              [clojure.spec.test.alpha :as spec.test]
              [clojure.test :as t]
-             [visual-flow.core :as flow-tracker]
+             [visual-flow.core :as visual-flow]
              [selvage.visibility :as vis]
              [taoensso.timbre :as timbre])
    (:import [java.io StringWriter]))
@@ -200,14 +200,14 @@
                     (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
                       (try
-                        (flow-tracker/setup  (str ~name) "hardcoded title")
+                        (visual-flow/setup  (str ~name) "hardcoded title")
                         (spec.test/instrument)
                         (s/with-fn-validation
                           (~wrapper
                             ~(flow-runner in-forms flow-description)))
                       (finally
-                        (flow-tracker/post-steps-hook)
-                        (flow-tracker/teardown)
+                        (visual-flow/post-steps-hook)
+                        (visual-flow/teardown)
                         (spec.test/unstrument))))
          (alter-meta! (var ~name) assoc :flow true))))
 

@@ -2,7 +2,7 @@
   "Code shared between midje and clojure.test implementations"
   (:require [selvage.visibility :as vis]
             [schema.core :as s]
-            [visual-flow.core :as flow-tracker]
+            [visual-flow.core :as visual-flow]
             [taoensso.timbre :as timbre])
   (:import [clojure.lang ISeq Symbol]))
 
@@ -56,7 +56,7 @@
   (-> kind #{:check :query} boolean))
 
 (defn run-step [[world _] [step-type f desc]]
-  (flow-tracker/run-step-hook [[:component-produced-messages (-> world :system :producer :produced-messages)]
+  (visual-flow/run-step-hook [[:component-produced-messages (-> world :system :producer :produced-messages)]
                                [:component-consumed-messages (-> world :system :s0 :consumer :consumed-messages)]
                                [:component-consumed-messages (-> world :system :consumer :consumed-messages)]
                                [:component-requests (-> world :system :http :requests)]
