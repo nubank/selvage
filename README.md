@@ -49,7 +49,7 @@ The world is a map that stores:
 
 ```clojure
 (ns selvage.clojure-test-example
-  (:require [selvage.test.selvage :refer [*world* defcheck defflow]]
+  (:require [selvage.test.flow :refer [*world* defcheck defflow]]
             [my-mocks.http :refer [GET]]
             [my-mocks.kafka.mock-consumer :as kafka.mock-consumer]
             [my-service.components :as components]))
