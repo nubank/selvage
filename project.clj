@@ -37,7 +37,8 @@
                  [com.google.guava/guava "23.0"]
                  [com.taoensso/timbre "4.10.0"]]
 
-  :profiles {:dev    {:dependencies [[nubank/matcher-combinators "0.4.2"]
+  :profiles {:dev    {:resource-paths ["test-resources/"]
+                      :dependencies [[nubank/matcher-combinators "0.4.2"]
                                      [eftest "0.5.4"]]}
              :kaocha {:dependencies [[lambdaisland/kaocha "0.0-313"]]}
              :1.8    {:dependencies [[org.clojure/clojure "1.8.0"]]}}
