@@ -20,4 +20,4 @@
   (TestFlowHooks. nil))
 
 (deftest discover-hooks-test
-  (is (some #(instance? TestHooksFlow %) (discover-hooks))))
+  (is (instance? TestFlowHooks (discover-hooks))))

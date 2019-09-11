@@ -3,6 +3,16 @@
             [clojure.edn :as edn]
             [clojure.java.classpath :as classpath]))
 
+(defn- string->qualified-var
+  "Turn a string representation of a namespace-qualified variable into a
+        variable, loading the namespace in the process"
+  [varstring]
+  (let [varsymbol (symbol varstring)
+        v         (symbol (name varsymbol))
+        n         (symbol (namespace varsymbol))]
+    (require n)
+    (ns-resolve (find-ns n) v)))
+
 (defprotocol FlowHooks
   (setup [this flow-metadata])
   (before-step [this step-metadata world])
@@ -10,11 +20,10 @@
   (teardown [this]))
 
 (defn discover-hooks []
-  )
-
-(comment
-  (io/resource "selvage.edn")
-
-  (Math/sqrt 1)
-
-  (classpath/get-urls (ClassLoader/getSystemClassLoader)))
+  (-> "selvage.edn"
+      io/resource
+      slurp
+      clojure.edn/read-string
+      :hooks
+      string->qualified-var
+      (apply [])))
