@@ -12,7 +12,7 @@
 (defn discover-hooks []
   )
 
-(comment 
+(comment
   (io/resource "selvage.edn")
 
   (Math/sqrt 1)
