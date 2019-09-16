@@ -27,3 +27,7 @@
       :hooks
       string->qualified-var
       (apply [])))
+
+;; return no-op implementation of Hook
+;; add tests
+

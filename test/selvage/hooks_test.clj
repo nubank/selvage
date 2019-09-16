@@ -16,7 +16,7 @@
   (teardown [this]
     (swap! calls* reverse)))
 
-(defn new-test-flow-hooks[]
+(defn new-test-flow-hooks []
   (TestFlowHooks. nil))
 
 (deftest discover-hooks-test
