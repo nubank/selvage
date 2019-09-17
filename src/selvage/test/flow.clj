@@ -199,13 +199,16 @@
                     (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
                       (try
+                        ;; TODO (visual-flow): Place setup here
                         (spec.test/instrument)
                         (s/with-fn-validation
                           (~wrapper
-                            ~(flow-runner in-forms flow-description)))
+                           ~(flow-runner in-forms flow-description)))
                       (finally
+                        ;; TODO (visual-flow): Place teardown here
+                        ;; TODO (visual-flow): Place post steps hook here
                         (spec.test/unstrument))))
-      (alter-meta! (var ~name) assoc :flow true))))
+         (alter-meta! (var ~name) assoc :flow true))))
 
 (defmacro ^::query fnq
   "Defines an anonymous retriable flow step. The flow will retry such steps

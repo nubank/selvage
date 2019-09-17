@@ -55,6 +55,7 @@
   (-> kind #{:check :query} boolean))
 
 (defn run-step [[world _] [step-type f desc]]
+  ;; TODO (visual-flow): Place step here
   (vis/with-split-cid
     (do
       (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc)

@@ -19,6 +19,7 @@
   (after-step [this step-metadata world])
   (teardown [this]))
 
+;; TODO: Do not fail if there's are no hooks
 (defn discover-hooks []
   (-> "selvage.edn"
       io/resource
@@ -28,6 +29,15 @@
       string->qualified-var
       (apply [])))
 
-;; return no-op implementation of Hook
 ;; add tests
+(defrecord NoOpFlowHooks [calls*]
+  FlowHooks
+  (setup [this flow-metadata])
+  (before-step [this step-metadata world])
+  (after-step [this step-metadata world])
+  (teardown [this]))
 
+(comment
+  (discover-hooks)
+  (def Hooks (TestFlowHooks. []))
+  (.setup Hooks {:meta :foo}))

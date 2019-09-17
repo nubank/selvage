@@ -1,6 +1,6 @@
 (ns selvage.hooks-test
-  (:require [selvage.hooks :refer :all]
-            [clojure.test :refer :all]))
+  (:require [clojure.test :refer :all]
+            [selvage.hooks :refer :all]))
 
 (defrecord TestFlowHooks [calls*]
   FlowHooks
