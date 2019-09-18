@@ -69,6 +69,17 @@
 (defflow basic-flow "is 1 one?"
   (testing (is (= 1 1))))
 
+(defflow hooks-flow ""
+  a-step
+  (testing "será?"
+    (is (= [[:after-step :foo]
+            [:before-step :foo]
+            [:setup :foo]]
+           (-> *world* nu/tapd :selvage/hooks nu/tapd :calls* deref)))))
+
+(comment
+  (hooks-flow))
+
 (deftest verbose-behaviour
   "Turning on *verbose* results in each step being printed"
   (let [test-result (with-out-str
@@ -114,4 +125,4 @@
     (is (match? {:y 3}
                 *world*))
     (is (match? {:y 3}
-                *world*))))
+          *world*))))

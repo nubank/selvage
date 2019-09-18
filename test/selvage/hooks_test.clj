@@ -17,7 +17,7 @@
     (swap! calls* reverse)))
 
 (defn new-test-flow-hooks []
-  (TestFlowHooks. nil))
+  (TestFlowHooks. (atom [])))
 
 (deftest discover-hooks-test
   (is (instance? TestFlowHooks (discover-hooks))))

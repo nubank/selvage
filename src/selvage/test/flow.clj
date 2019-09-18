@@ -5,8 +5,9 @@
              [clojure.spec.test.alpha :as spec.test]
              [clojure.test :as t]
              [selvage.visibility :as vis]
+             [selvage.hooks :as hooks]
              [taoensso.timbre :as timbre])
-  (:import [java.io StringWriter]))
+   (:import [java.io StringWriter]))
 
 (def ^:dynamic *probe-timeout* 300)
 (def ^:dynamic *probe-sleep-period* 10)
@@ -199,6 +200,7 @@
                     (fn [flow] (flow)))]
     `(do (~`t/deftest ~name
                       (try
+                        #_(hooks/discover-hooks)
                         ;; TODO (visual-flow): Place setup here
                         (spec.test/instrument)
                         (s/with-fn-validation

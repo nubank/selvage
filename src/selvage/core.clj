@@ -2,7 +2,8 @@
   "Code shared between midje and clojure.test implementations"
   (:require [selvage.visibility :as vis]
             [schema.core :as s]
-            [taoensso.timbre :as timbre])
+            [taoensso.timbre :as timbre]
+            [selvage.hooks :as hooks])
   (:import [clojure.lang ISeq Symbol]))
 
 (def ^:dynamic *quiet* false)
@@ -55,6 +56,7 @@
   (-> kind #{:check :query} boolean))
 
 (defn run-step [[world _] [step-type f desc]]
+  (nu/tapd world)
   ;; TODO (visual-flow): Place step here
   (vis/with-split-cid
     (do
@@ -106,7 +108,10 @@
 
 (defn run-steps [steps]
   (reset! worlds-atom {})
-  (run-step-sequence [{} ""] steps))
+  #_(swap! assoc :h)
+  (let [hooks (hooks/discover-hooks)]
+    (hooks/setup hooks {})              ;TODO: pass metadata
+    (run-step-sequence [{:selvage/hooks hooks} ""] steps)))
 
 (defn- format-expr [expr]
   (let [line-info (some-> (:line (meta expr)) (#(str " (at line: " % ")")))]
