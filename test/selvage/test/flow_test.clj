@@ -72,10 +72,10 @@
 (defflow hooks-flow ""
   a-step
   (testing "será?"
-    (is (= [[:after-step :foo]
-            [:before-step :foo]
+    (is (= [[:after-step :baz]
+            [:before-step :bar]
             [:setup :foo]]
-           (-> *world* nu/tapd :selvage/hooks nu/tapd :calls* deref)))))
+           (-> *world* nu/tapd :selvage/hooks :calls* deref)))))
 
 (comment
   (hooks-flow))

@@ -52,11 +52,7 @@
 (defn- partition-group-by [pred coll]
   (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
-(defn retriable-step? [[kind _f _desc]]
-  (-> kind #{:check :query} boolean))
-
 (defn run-step [[world _] [step-type f desc]]
-  (nu/tapd world)
   ;; TODO (visual-flow): Place step here
   (vis/with-split-cid
     (do
@@ -64,11 +60,16 @@
                      {:log       :flow/run-step
                       :step-type step-type
                       :step-desc desc})
+      (nu/tapd world)
+      (-> world :selvage/hooks (hooks/before-step :bar world))
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
         (if next-world
           [next-world result-desc]
           (reduced [next-world result-desc]))))))
+
+(defn retriable-step? [[kind _f _desc]]
+  (-> kind #{:check :query} boolean))
 
 (defn run-step-sequence [s0 steps]
   (reduce run-step s0 steps))
@@ -110,7 +111,7 @@
   (reset! worlds-atom {})
   #_(swap! assoc :h)
   (let [hooks (hooks/discover-hooks)]
-    (hooks/setup hooks {})              ;TODO: pass metadata
+    (hooks/setup hooks :foo)              ;TODO: pass metadata
     (run-step-sequence [{:selvage/hooks hooks} ""] steps)))
 
 (defn- format-expr [expr]

@@ -8,7 +8,7 @@
     (swap! calls* conj [:setup flow-metadata]))
 
   (before-step [this step-metadata world]
-    (swap! calls* conj [:before-step step-metadata world]))
+    (swap! calls* conj [:before-step step-metadata]))
 
   (after-step [this step-metadata world]
     (swap! calls* conj [:after-step step-metadata world]))
