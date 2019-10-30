@@ -11,7 +11,7 @@
     (swap! calls* conj [:before-step step-metadata]))
 
   (after-step [this step-metadata world]
-    (swap! calls* conj [:after-step step-metadata world]))
+    (swap! calls* conj [:after-step step-metadata]))
 
   (teardown [this]
     (swap! calls* reverse)))

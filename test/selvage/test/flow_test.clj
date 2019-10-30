@@ -71,11 +71,14 @@
 
 (defflow hooks-flow ""
   a-step
+  ;; TODO: Understand why there are multiple :before-step without :after-step
   (testing "será?"
-    (is (= [[:after-step :baz]
+    (is (= [[:setup :foo]
             [:before-step :bar]
-            [:setup :foo]]
-           (-> *world* nu/tapd :selvage/hooks :calls* deref)))))
+            [:after-step :baz]
+            [:before-step :bar]
+            [:before-step :bar]]
+           (-> *world* :selvage/hooks :calls* deref)))))
 
 (comment
   (hooks-flow))

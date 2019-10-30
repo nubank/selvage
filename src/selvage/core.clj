@@ -60,10 +60,10 @@
                      {:log       :flow/run-step
                       :step-type step-type
                       :step-desc desc})
-      (nu/tapd world)
-      (-> world :selvage/hooks (hooks/before-step :bar world))
+      (hooks/before-step (:selvage/hooks world) :bar world)
       (let [[next-world result-desc] (f world)]
         (save-world-debug! desc next-world)
+        (hooks/after-step (:selvage/hooks world) :baz world)
         (if next-world
           [next-world result-desc]
           (reduced [next-world result-desc]))))))
