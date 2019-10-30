@@ -69,11 +69,12 @@
 (defflow basic-flow "is 1 one?"
   (testing (is (= 1 1))))
 
-(defflow hooks-flow ""
+(defflow hooks-flow "a flow description"
   a-step
   ;; TODO: Understand why there are multiple :before-step without :after-step
   (testing "será?"
-    (is (= [[:setup :foo]
+    (is (= [[:setup {:flow-description "a flow description"
+                     :flow-ns          'hardcoded-value}]
             [:before-step :bar]
             [:after-step :baz]
             [:before-step :bar]

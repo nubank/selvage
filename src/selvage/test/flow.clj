@@ -173,7 +173,7 @@
      :in-forms         in-forms
      :options          options}))
 
-(defn flow-runner [in-forms flow-description]
+(defn flow-runner [in-forms flow-description flow-title]
   `(fn []
      (binding [core/*report-fail-fn* #(t/inc-report-counter :error)
                core/*verbose*        *verbose*]
@@ -181,7 +181,7 @@
          (core/announce-flow ~flow-description)
          (with-report-counters
            (->> (list ~@(core/forms->steps classify retry in-forms))
-                core/run-steps
+                (core/run-steps ~flow-title)
                 (announce-results ~flow-description)))))))
 
 (defmacro defflow
@@ -205,7 +205,7 @@
                         (spec.test/instrument)
                         (s/with-fn-validation
                           (~wrapper
-                           ~(flow-runner in-forms flow-description)))
+                           ~(flow-runner in-forms flow-description flow-title)))
                       (finally
                         ;; TODO (visual-flow): Place teardown here
                         ;; TODO (visual-flow): Place post steps hook here
