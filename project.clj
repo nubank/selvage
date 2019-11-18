@@ -1,4 +1,4 @@
-(defproject nubank/selvage "1.0.0-BETA"
+(defproject nubank/selvage "1.0.0-hooks"
   :description "Macro for writing tests in world-transition pattern"
   :url "https://github.com/nubank/selvage"
   :license {:name "Apache License, Version 2.0"}
