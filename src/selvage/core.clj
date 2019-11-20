@@ -53,7 +53,6 @@
   (->> coll (partition-by pred) (map #(vector (pred (first %)) %))))
 
 (defn run-step [[world _] [step-type f desc]]
-  ;; TODO (visual-flow): Place step here
   (vis/with-split-cid
     (do
       (emit-debug-ln (str "Running " (format "%-10s" (name step-type)) " " desc)
@@ -111,8 +110,11 @@
   (reset! worlds-atom {})
   (let [hooks (hooks/discover-hooks)]
     (hooks/setup hooks {:flow-description description
-                        :flow-ns          'hardcoded-value})              ;TODO: pass metadata
-    (run-step-sequence [{:selvage/hooks hooks} ""] steps)))
+                        :flow-ns          'hardcoded-value}) ;TODO: pass metadata
+    (let [steps (run-step-sequence [{:selvage/hooks hooks} ""] steps)]
+      ;; TODO: Will not run if test fails
+      (hooks/teardown hooks)
+      steps)))
 
 (defn- format-expr [expr]
   (let [line-info (some-> (:line (meta expr)) (#(str " (at line: " % ")")))]
