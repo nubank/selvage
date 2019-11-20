@@ -106,11 +106,11 @@
   [classify-fn, retry-fn, forms :- [Expression]]
   (->> forms (map classify-fn) (retry-sequences retry-fn) seq))
 
-(defn run-steps [description steps]
+(defn run-steps [flow-name description steps]
   (reset! worlds-atom {})
   (let [hooks (hooks/discover-hooks)]
-    (hooks/setup hooks {:flow-description description
-                        :flow-ns          'hardcoded-value}) ;TODO: pass metadata
+    (hooks/setup hooks {:flow-ns          'hardcoded-value
+                        :flow-description (or description flow-name)}) ;TODO: pass metadata
     (let [steps (run-step-sequence [{:selvage/hooks hooks} ""] steps)]
       ;; TODO: Will not run if test fails
       (hooks/teardown hooks)

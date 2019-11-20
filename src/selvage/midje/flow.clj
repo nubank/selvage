@@ -139,7 +139,7 @@
                            (with-cid
                              (core/announce-flow ~flow-description)
                              (->> (list ~@(core/forms->steps classify retry in-forms))
-                                  core/run-steps
+                                  (core/run-steps ~flow-name)
                                   (announce-results ~flow-description)))))))
 
 (defmacro ^::query fnq
