@@ -1,4 +1,4 @@
-(defproject nubank/selvage "1.0.0-BETA"
+(defproject nubank/selvage "1.0.1-SNAPSHOT"
   :description "Macro for writing tests in world-transition pattern"
   :url "https://github.com/nubank/selvage"
   :license {:name "Apache License, Version 2.0"}
@@ -29,7 +29,7 @@
 
 
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [io.aviso/pretty "0.1.35"]
+                 [io.aviso/pretty "0.1.37"]
                  [com.fasterxml.jackson.core/jackson-databind "2.9.6"]
                  [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor "2.9.6"]
                  [midje "1.9.4" :exclusions [org.clojure/clojure]]
