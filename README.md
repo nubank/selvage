@@ -5,6 +5,10 @@
 
 Integration testing at the edges of a microservice.
 
+__\*\*Selvage has been decommissioned\*\*__
+
+`selvage` has been superseded by [`state-flow`](https://github.com/nubank/state-flow), which is a re-implementation of the "flow" abstraction that allows for better composibility.
+
 ### What are selvage tests?
 
 Selvage tests are integration-style tests for a single service that use the flow macro.
